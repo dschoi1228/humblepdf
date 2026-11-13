@@ -76,7 +76,7 @@ describe("openFiles", () => {
           if (password === undefined) throw { code: "password_required", message: "x" };
           if (password !== "right") throw { code: "wrong_password", message: "x" };
         }
-        return { sourceId: path, path, info: pdfInfo(1) };
+        return { sourceId: path, path, name: path, info: pdfInfo(1) };
       },
     };
     const prompts: [string, boolean][] = [];

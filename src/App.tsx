@@ -1,148 +1,89 @@
-// M0 verification screen: open one file, render its first page, show dropped paths.
-// This is not the M1 viewer; it only exists to check the stack (SPEC 10, M0-2).
-import { useCallback, useEffect, useRef, useState } from "react";
-import { backend, isBackendError, type OpenedSource } from "./backend";
-import { ko } from "./strings/ko";
-import { openPdf, renderPage } from "./viewer/pdfjs";
+// App shell: toolbar, thumbnail panel, page view, password dialog and error toasts.
+import { useEffect, useRef } from "react";
+import { addFiles } from "./app/actions";
+import { backend, isBackendError } from "./backend";
+import { EmptyState } from "./components/EmptyState";
+import { PageView } from "./components/PageView";
+import { PasswordDialog } from "./components/PasswordDialog";
+import { ThumbnailPanel } from "./components/ThumbnailPanel";
+import { Toolbar } from "./components/Toolbar";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDocumentStore } from "./state/documentStore";
+import { baseName } from "./state/model";
+import { useViewStore } from "./state/viewStore";
+import "./viewer/testHooks";
 
-type Timing = { openMs: number; bytesMs: number; renderMs: number; totalMs: number; bytes: number };
-
-declare global {
-  interface Window {
-    /** State exposed for E2E tests. */
-    __m0?: { status: "idle" | "loading" | "rendered" | "error"; timing?: Timing; error?: string };
-  }
-}
-
-function errorText(e: unknown): string {
-  if (isBackendError(e)) return ko.errors[e.code] ?? ko.errors.generic;
-  return ko.errors.generic;
+/** Resolves when the first page of the document has been drawn. */
+function waitForFirstRender(timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t0 = performance.now();
+    const check = () => {
+      if (window.__viewer?.firstRenderAt() != null) resolve();
+      else if (performance.now() - t0 > timeoutMs) reject(new Error("timeout"));
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
 }
 
 export default function App() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [opened, setOpened] = useState<OpenedSource | null>(null);
-  const [timing, setTiming] = useState<Timing | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [dropped, setDropped] = useState<string[]>([]);
-  // The bench/open hook must run once even when StrictMode mounts effects twice.
-  const startedRef = useRef(false);
+  const hasPages = useDocumentStore((s) => s.doc.pages.length > 0);
+  const thumbnailsOpen = useViewStore((s) => s.thumbnailsOpen);
+  const started = useRef(false);
 
-  const openAndRender = useCallback(async (path: string): Promise<Timing> => {
-    window.__m0 = { status: "loading" };
-    setError(null);
-    const t0 = performance.now();
-    const src = await backend.openSource(path);
-    const t1 = performance.now();
-    const bytes = await backend.sourceBytes(src.sourceId);
-    const t2 = performance.now();
-    const size = bytes.byteLength;
-    if (src.info.kind !== "pdf") throw { code: "unknown_format", message: "M0 screen renders PDF only" };
-    const doc = await openPdf(bytes);
-    const canvas = canvasRef.current;
-    if (!canvas) throw new Error("no canvas");
-    await renderPage(doc, 1, canvas, 1);
-    const t3 = performance.now();
-    const tm = { openMs: t1 - t0, bytesMs: t2 - t1, renderMs: t3 - t2, totalMs: t3 - t0, bytes: size };
-    setOpened(src);
-    setTiming(tm);
-    window.__m0 = { status: "rendered", timing: tm };
-    return tm;
-  }, []);
-
-  const tryOpen = useCallback(
-    async (path: string) => {
-      try {
-        await openAndRender(path);
-      } catch (e) {
-        console.error(e);
-        setError(errorText(e));
-        window.__m0 = { status: "error", error: String(isBackendError(e) ? e.code : e) };
-      }
-    },
-    [openAndRender],
-  );
-
-  // File drop (Tauri only) and the M0 bench / test hooks.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    backend
-      .onFileDrop((paths) => {
-        setDropped(paths);
-        if (paths[0]) void tryOpen(paths[0]);
-      })
+    void backend
+      .onFileDrop((files) => void addFiles(files))
       .then((u) => {
         if (cancelled) u();
         else unlisten = u;
       });
 
-    void (async () => {
-      if (startedRef.current) return;
-      startedRef.current = true;
-      const bench = await backend.benchConfig();
-      if (bench) {
-        try {
-          const tm = await openAndRender(bench);
-          await backend.benchReport(JSON.stringify({ ok: true, ...tm }));
-        } catch (e) {
-          await backend.benchReport(JSON.stringify({ ok: false, error: String(isBackendError(e) ? e.code : e) }));
+    // StrictMode runs effects twice; the startup hooks must run once.
+    if (!started.current) {
+      started.current = true;
+      void (async () => {
+        // Measurement hook (PDF_EDITOR_BENCH / ?bench=): time to the first drawn page.
+        const bench = await backend.benchConfig();
+        if (bench) {
+          const t0 = performance.now();
+          try {
+            const n = await addFiles([{ path: bench, name: baseName(bench) }]);
+            if (!n) throw new Error("not opened");
+            await waitForFirstRender(60_000);
+            const totalMs = (window.__viewer?.firstRenderAt() ?? performance.now()) - t0;
+            await backend.benchReport(JSON.stringify({ ok: true, totalMs, pages: useDocumentStore.getState().doc.pages.length }));
+          } catch (e) {
+            await backend.benchReport(JSON.stringify({ ok: false, error: String(isBackendError(e) ? e.code : e) }));
+          }
+          return;
         }
-        return;
-      }
-      const open = new URLSearchParams(window.location.search).get("open");
-      if (open) await tryOpen(open);
-    })();
+        // Browser-mode convenience: ?open=/__fixtures/a.pdf,/__fixtures/b.pdf
+        const open = new URLSearchParams(window.location.search).get("open");
+        if (open) await addFiles(open.split(",").map((path) => ({ path, name: baseName(path) })));
+      })();
+    }
 
     return () => {
       cancelled = true;
       unlisten?.();
     };
-  }, [openAndRender, tryOpen]);
-
-  const onPick = async () => {
-    const paths = await backend.pickFiles();
-    if (paths?.[0]) await tryOpen(paths[0]);
-  };
+  }, []);
 
   return (
-    <main className="m0">
-      <header>
-        <h1>{ko.appTitle}</h1>
-        <span className="badge">{ko.m0Banner}</span>
-        {backend.kind === "tauri" && (
-          <button type="button" onClick={onPick}>
-            {ko.openFile}
-          </button>
-        )}
-      </header>
-      <p className="hint">{ko.dropHint}</p>
-      {dropped.length > 0 && (
-        <section data-testid="dropped">
-          <h2>{ko.droppedPaths}</h2>
-          <ul>
-            {dropped.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {opened ? (
-        <p className="info">
-          {opened.path} · {ko.pageOf(1, opened.info.pages.length)}
-          {timing && <> · {ko.firstPageTime(timing.totalMs)}</>}
-        </p>
-      ) : (
-        <p className="info">{ko.noFile}</p>
-      )}
-      <div className="page">
-        <canvas ref={canvasRef} data-testid="page-canvas" />
+    <TooltipProvider delayDuration={400}>
+      <div className="flex h-screen flex-col overflow-hidden">
+        <Toolbar />
+        <main className="flex min-h-0 flex-1">
+          {hasPages && thumbnailsOpen && <ThumbnailPanel />}
+          <div className="min-w-0 flex-1">{hasPages ? <PageView /> : <EmptyState />}</div>
+        </main>
       </div>
-    </main>
+      <PasswordDialog />
+      <Toaster position="bottom-right" richColors closeButton />
+    </TooltipProvider>
   );
 }

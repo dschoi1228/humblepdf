@@ -1,9 +1,7 @@
 // Adding files (SPEC 6.1): name order, password prompts, errors that do not stop the rest.
-import type { Backend } from "../backend/types";
+import type { Backend, PickedFile } from "../backend/types";
 import { isBackendError } from "../backend/types";
 import { compareFileNames, type OpenedEntry } from "../state/model";
-
-export type PickedFile = { path: string; name: string };
 
 export type AddFilesDeps = {
   backend: Pick<Backend, "openSource">;
@@ -12,6 +10,8 @@ export type AddFilesDeps = {
    * Resolves to null when the user cancels.
    */
   promptPassword: (fileName: string, wrong: boolean) => Promise<string | null>;
+  /** Called when a password given for a file was accepted (the prompt can close). */
+  passwordAccepted?: () => void;
   /** Reports a file that could not be added. */
   notifyError: (fileName: string, code: string) => void;
 };
@@ -29,6 +29,7 @@ export async function openFiles(files: PickedFile[], deps: AddFilesDeps): Promis
       try {
         const r = await deps.backend.openSource(f.path, password);
         opened.push({ sourceId: r.sourceId, path: r.path, name: f.name, info: r.info, password });
+        if (password !== undefined) deps.passwordAccepted?.();
         break;
       } catch (e) {
         const code = isBackendError(e) ? e.code : "generic";
