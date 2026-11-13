@@ -1,8 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
+import { baseName } from "../state/model";
 import { ko } from "../strings/ko";
-import type { Backend, OpenedSource } from "./types";
+import type { Backend, OpenedSource, PickedFile } from "./types";
+
+const toPicked = (paths: string[]): PickedFile[] => paths.map((path) => ({ path, name: baseName(path) }));
 
 export const tauriBackend: Backend = {
   kind: "tauri",
@@ -19,7 +22,7 @@ export const tauriBackend: Backend = {
 
   async onFileDrop(cb) {
     return getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === "drop") cb(event.payload.paths);
+      if (event.payload.type === "drop") cb(toPicked(event.payload.paths));
     });
   },
 
@@ -29,7 +32,7 @@ export const tauriBackend: Backend = {
       filters: [{ name: ko.fileFilterName, extensions: ["pdf", "jpg", "jpeg", "png"] }],
     });
     if (r === null) return null;
-    return Array.isArray(r) ? r : [r];
+    return toPicked(Array.isArray(r) ? r : [r]);
   },
 
   benchConfig() {

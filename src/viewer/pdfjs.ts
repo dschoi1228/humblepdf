@@ -21,8 +21,8 @@ export const pdfjsAssetOptions = {
  * Opens a PDF from bytes. pdf.js transfers the underlying buffer to its worker,
  * so `data` must not be used afterwards (SPEC 3).
  */
-export function openPdf(data: Uint8Array): Promise<PDFDocumentProxy> {
-  return getDocument({ ...pdfjsAssetOptions, data }).promise;
+export function openPdf(data: Uint8Array, password?: string): Promise<PDFDocumentProxy> {
+  return getDocument({ ...pdfjsAssetOptions, data, password }).promise;
 }
 
 const activeRenders = new WeakMap<HTMLCanvasElement, RenderTask>();

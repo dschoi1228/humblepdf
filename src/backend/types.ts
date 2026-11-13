@@ -3,8 +3,13 @@ import type { SourceInfo } from "../bindings/SourceInfo";
 export type OpenedSource = {
   sourceId: string;
   path: string;
+  /** File name for display. */
+  name: string;
   info: SourceInfo;
 };
+
+/** A file chosen in the open dialog or dropped on the window. */
+export type PickedFile = { path: string; name: string };
 
 /** Error shape returned by the backend: `{ code, message }`. */
 export type BackendError = { code: string; message: string };
@@ -23,9 +28,9 @@ export interface Backend {
   /** Fresh bytes on every call: pdf.js takes ownership of the buffer it is given. */
   sourceBytes(sourceId: string): Promise<Uint8Array>;
   /** Registers a callback for files dropped onto the window. Returns an unsubscribe function. */
-  onFileDrop(cb: (paths: string[]) => void): Promise<() => void>;
+  onFileDrop(cb: (files: PickedFile[]) => void): Promise<() => void>;
   /** Shows the open-file dialog. Returns null when cancelled. */
-  pickFiles(): Promise<string[] | null>;
+  pickFiles(): Promise<PickedFile[] | null>;
   /** M0 measurement hook (see src-tauri `bench_config`). */
   benchConfig(): Promise<string | null>;
   benchReport(report: string): Promise<void>;

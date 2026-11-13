@@ -28,6 +28,8 @@ struct SourceEntry {
 struct OpenedSource {
     source_id: String,
     path: String,
+    /// File name for display.
+    name: String,
     info: SourceInfo,
 }
 
@@ -62,9 +64,14 @@ fn open_source(
             code: "internal",
             message: "state lock poisoned".into(),
         })?
-        .insert(id.clone(), SourceEntry { path: p });
+        .insert(id.clone(), SourceEntry { path: p.clone() });
+    let name = p
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.clone());
     Ok(OpenedSource {
         source_id: id,
+        name,
         path,
         info,
     })
