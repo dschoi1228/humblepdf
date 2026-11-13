@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import process from "node:process";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { join, normalize, resolve, sep } from "node:path";
@@ -41,7 +42,8 @@ function serveTestFiles(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [react(), serveTestFiles()],
+  plugins: [react(), tailwindcss(), serveTestFiles()],
+  resolve: { alias: { "@": resolve("src") } },
   // Keep Rust errors visible when run by `tauri dev`.
   clearScreen: false,
   server: {
