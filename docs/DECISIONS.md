@@ -147,19 +147,32 @@
 - 결정: Tauri 템플릿의 `panic = "abort"`를 쓰지 않는다. 명령 경계에서 `catch_unwind`로 panic을 오류로 바꾼다.
 - 이유: SPEC 8장(패닉으로 앱이 죽지 않게 한다). 파서 내부의 panic도 앱을 죽이지 않아야 한다.
 
+### D22. UI: Tailwind CSS + shadcn/ui (M1)
+
+- 결정: 스타일은 Tailwind CSS 4(`@tailwindcss/vite`)로 한다. 부품은 shadcn/ui(Radix 기반) 중 필요한 것만 `src/components/ui/`에 복사해 쓴다: button, dialog, input, tooltip, scroll-area, separator, sonner. 아이콘은 lucide-react, 알림은 sonner를 쓴다.
+- 이유: 사용자가 UI 완성도를 우선했다(D2). 대화상자의 포커스와 키보드 처리 같은 접근성을 직접 구현하지 않아도 된다.
+- 설정:
+  - shadcn이 생성하는 `cn`은 shadcn 팀의 `cn` 패키지(MIT)다. `clsx`와 `tailwind-merge`를 대신하므로 둘은 넣지 않는다.
+  - sonner 래퍼가 쓰는 `next-themes`는 빼고 밝은 테마로 고정했다. 다크 모드는 SPEC 6.2의 후순위다.
+  - `shadcn` 패키지는 CSS(`shadcn/tailwind.css`)를 빌드할 때만 필요하므로 개발 의존성으로 둔다.
+- 오프라인: 웹폰트를 쓰지 않는다. shadcn CLI는 부품을 추가할 때만 네트워크를 쓰고, 앱은 실행 중에 요청하지 않는다(E2E로 확인).
+
+### D23. 상태 관리: Zustand (M1)
+
+- 결정: 문서 모델과 소스 메타데이터(`documentStore`), 화면 상태(`viewStore`), 비밀번호 요청(`passwordPrompt`)을 Zustand 저장소로 둔다. 모델을 바꾸는 코드는 순수 함수(`src/state/model.ts`)로 두고 저장소가 호출한다.
+- 이유: 구독 범위를 좁힐 수 있어 300쪽 문서에서도 다시 그리기를 줄인다. M2의 Undo는 순수 함수 위에 이력을 얹어 구현한다.
+- 비밀번호는 `documentStore`의 소스 메타데이터에만 둔다. 메모리에만 있고 모델에는 넣지 않는다(SPEC 4).
+
 ## 미정
 
 | 항목 | 기본 제안 | 정할 시점 |
 |---|---|---|
 | 앱 이름과 식별자 | 가칭 `pdf-editor`, 식별자 `com.pdfeditor.app` | 공개 전. M0는 가칭으로 진행 |
 | 라이선스 | MIT | 공개 전 |
-| UI 컴포넌트 | Tailwind CSS + shadcn/ui | M1 (M0에는 필요 없어 미룸) |
-| 상태 관리 | Zustand | M1 |
-| 썸네일 정렬 | dnd-kit | M2 |
+| 썸네일 정렬 | dnd-kit (포인터 이벤트 기반, SPEC 6.3) | M2 |
 
-확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1).
-
-## 고정한 버전 (2026-11-13, M0)
+확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23).
+## 고정한 버전 (2026-11-13, M0·M1)
 
 정확한 버전으로 고정한다(`Cargo.toml`의 `=`, `package.json`의 정확한 버전). crates.io의 `tauri` 최신판은 3.0.0-alpha이므로 2.x를 명시한다.
 
@@ -182,6 +195,11 @@
 | typescript | 6.0.3 | Apache-2.0 |
 | vitest / @playwright/test | 5.1.0 / 1.65.0 | MIT / Apache-2.0 |
 | eslint, typescript-eslint | 10.14.0, 8.72.2 | MIT |
+| zustand (M1) | 5.1.0 | MIT |
+| tailwindcss, @tailwindcss/vite (M1) | 4.3.5 | MIT |
+| radix-ui / cn / class-variance-authority (M1) | 1.8.1 / 0.5.2 / 0.7.1 | MIT / MIT / Apache-2.0 |
+| lucide-react / sonner / tw-animate-css (M1) | 1.72.0 / 2.0.8 / 1.4.0 | ISC / MIT / MIT |
+| shadcn (개발 의존성, M1) | 4.23.0 | MIT |
 
 | 자산 | 버전 | 라이선스 |
 |---|---|---|

@@ -34,16 +34,18 @@ out/            사람이 열어볼 샘플 출력 (git 제외)
 
 ## 명령
 
-처음 한 번 `npm install`을 한 뒤 쓴다. 저장소 루트에서 실행한다.
+처음 한 번 `npm install`을 한 뒤 쓴다. 저장소 루트에서 실행한다. PowerShell 실행 정책이 `npm.ps1`을 막는 PC에서는 `npm` 대신 `npm.cmd`를 쓴다.
 
 ```
 npm run tauri dev            앱 실행 (개발 빌드)
 npm run dev                  브라우저 모드(백엔드 mock)로 프런트엔드만 실행. http://localhost:1420
-                             ?open=/__fixtures/<파일> 로 fixture를 연다(개발 서버 전용 경로)
+                             ?open=/__fixtures/a.pdf,/__fixtures/b.pdf 로 fixture를 연다(개발 서버 전용 경로).
+                             브라우저 모드의 이미지는 core가 계산한 레이아웃(out/e2e/info/)이 있어야 열린다.
+                             npm run e2e를 한 번 돌리면 생긴다
 npm run build:exe            포터블 exe 빌드 → target/release/pdf-editor.exe (설치 프로그램 없음)
 cargo test --workspace       코어·CLI 테스트 (출력 PDF 재파싱 테스트 포함)
 npm test                     프런트엔드 단위 테스트 (Vitest. 좌표 변환, core 상자 vs pdf.js)
-npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용)
+npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용). 준비 단계가 CLI를 빌드해 쓴다
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 npm run lint                 ESLint + tsc 타입 검사
