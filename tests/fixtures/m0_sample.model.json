@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    { "id": "s1", "kind": "pdf", "path": "tests/fixtures/korean_embedded.pdf" },
+    { "id": "s2", "kind": "pdf", "path": "tests/fixtures/rotated.pdf" }
+  ],
+  "pages": [
+    {
+      "id": "p1",
+      "sourceId": "s1",
+      "pageIndex": 0,
+      "imageFit": null,
+      "box": { "x0": 0, "y0": 0, "x1": 595.276, "y1": 841.89 },
+      "baseRotation": 0,
+      "userRotation": 0,
+      "objects": [
+        {
+          "type": "highlight",
+          "id": "o-hl-1",
+          "quads": [[{ "x": 55, "y": 734 }, { "x": 340, "y": 734 }, { "x": 55, "y": 702 }, { "x": 340, "y": 702 }]],
+          "color": [1, 0.92, 0.23],
+          "opacity": 0.4
+        },
+        {
+          "type": "text",
+          "id": "o-tx-1",
+          "origin": { "x": 60, "y": 600 },
+          "rotation": 0,
+          "fontSize": 16,
+          "color": [0.1, 0.2, 0.6],
+          "lines": ["추가한 텍스트: 서명 확인을 마쳤습니다", "두 번째 줄 Second line 123"]
+        },
+        {
+          "type": "rect",
+          "id": "o-rc-1",
+          "rect": { "x0": 60, "y0": 380, "x1": 300, "y1": 500 },
+          "stroke": [0.85, 0.1, 0.1],
+          "strokeWidth": 2,
+          "fill": null,
+          "opacity": 1
+        },
+        {
+          "type": "ellipse",
+          "id": "o-el-1",
+          "rect": { "x0": 320, "y0": 380, "x1": 520, "y1": 500 },
+          "stroke": [0.1, 0.6, 0.2],
+          "strokeWidth": 3,
+          "fill": [0.8, 1, 0.8],
+          "opacity": 0.8
+        },
+        {
+          "type": "line",
+          "id": "o-ar-1",
+          "from": { "x": 80, "y": 300 },
+          "to": { "x": 300, "y": 350 },
+          "stroke": [0.1, 0.3, 0.9],
+          "strokeWidth": 3,
+          "arrow": true,
+          "opacity": 1
+        },
+        {
+          "type": "signature",
+          "id": "o-sg-1",
+          "signatureId": "sig-demo",
+          "rect": { "x0": 330, "y0": 120, "x1": 510, "y1": 180 },
+          "rotation": 0
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "sourceId": "s2",
+      "pageIndex": 1,
+      "imageFit": null,
+      "box": { "x0": 0, "y0": 0, "x1": 595.276, "y1": 841.89 },
+      "baseRotation": 90,
+      "userRotation": 0,
+      "objects": [
+        {
+          "type": "text",
+          "id": "o-tx-2",
+          "origin": { "x": 300, "y": 200 },
+          "rotation": 90,
+          "fontSize": 18,
+          "color": [0, 0, 0],
+          "lines": ["회전된 페이지의 텍스트", "Rotated page 90"]
+        },
+        {
+          "type": "line",
+          "id": "o-ar-2",
+          "from": { "x": 150, "y": 300 },
+          "to": { "x": 150, "y": 600 },
+          "stroke": [0.8, 0.2, 0.1],
+          "strokeWidth": 2,
+          "arrow": true,
+          "opacity": 1
+        },
+        {
+          "type": "signature",
+          "id": "o-sg-2",
+          "signatureId": "sig-demo",
+          "rect": { "x0": 400, "y0": 500, "x1": 460, "y1": 680 },
+          "rotation": 90
+        }
+      ]
+    }
+  ]
+}
