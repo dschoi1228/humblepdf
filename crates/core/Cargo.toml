@@ -1,0 +1,20 @@
+[package]
+name = "pdf-editor-core"
+description = "Document model, source inspection and PDF export for pdf-editor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "pdf_editor_core"
+
+[dependencies]
+lopdf.workspace = true
+subsetter.workspace = true
+ttf-parser.workspace = true
+image.workspace = true
+ts-rs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

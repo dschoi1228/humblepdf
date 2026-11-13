@@ -1,0 +1,47 @@
+:root {
+  font-family: system-ui, "Segoe UI", "Malgun Gothic", sans-serif;
+  color: #1d1d1f;
+  background: #f3f3f5;
+}
+
+body {
+  margin: 0;
+}
+
+.m0 {
+  padding: 16px 24px;
+}
+
+.m0 header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.m0 h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.m0 .badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e6ff;
+  color: #2b3aa0;
+}
+
+.m0 .hint,
+.m0 .info {
+  color: #555;
+  font-size: 13px;
+}
+
+.m0 .error {
+  color: #b00020;
+}
+
+.m0 .page canvas {
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+}
