@@ -3,6 +3,7 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import { waitForIdle, waitForRenders } from "./helpers";
 
 const CASES = [
   {
@@ -43,7 +44,7 @@ async function extractText(page: Page, url: string): Promise<string[]> {
 /** Fraction of canvas pixels that are dark (text drawn). */
 async function inkRatio(page: Page): Promise<number> {
   return page.evaluate(() => {
-    const c = document.querySelector<HTMLCanvasElement>("[data-testid=page-canvas]")!;
+    const c = document.querySelector<HTMLCanvasElement>("[data-testid=page] canvas")!;
     const ctx = c.getContext("2d")!;
     const { data } = ctx.getImageData(0, 0, c.width, Math.floor(c.height / 4));
     let dark = 0;
@@ -72,8 +73,8 @@ for (const c of CASES) {
 
     const url = `/__fixtures/${c.file}`;
     await page.goto(`/?open=${encodeURIComponent(url)}`);
-    await page.waitForFunction(() => window.__m0?.status === "rendered" || window.__m0?.status === "error");
-    expect(await page.evaluate(() => window.__m0?.status)).toBe("rendered");
+    await waitForRenders(page);
+    await waitForIdle(page);
 
     expect(await inkRatio(page), "text pixels on the top of the page").toBeGreaterThan(0.002);
     expect(await extractText(page, url)).toEqual(c.lines);
@@ -84,6 +85,6 @@ for (const c of CASES) {
     expect(warnings.filter((w) => !w.includes("[vite]") && !w.includes("React DevTools"))).toEqual([]);
 
     mkdirSync("out/m0", { recursive: true });
-    await page.locator("[data-testid=page-canvas]").screenshot({ path: `out/m0/${c.file}.png` });
+    await page.locator("[data-testid=page]").first().screenshot({ path: `out/m0/${c.file}.png` });
   });
 }

@@ -5,6 +5,7 @@ import { defineConfig } from "@playwright/test";
 // browser download is needed.
 export default defineConfig({
   testDir: "tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 120_000,
   fullyParallel: false,
   workers: 1,

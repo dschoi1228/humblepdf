@@ -543,6 +543,43 @@ fn synthetic_signature(w: u32, h: u32) -> Vec<u8> {
     out
 }
 
+/// 300 pages (M1): a large page number on each, sizes cycling A4 / Letter / A5 landscape,
+/// every 7th page rotated 90.
+fn pages_300() -> Document {
+    let sizes = [A4, LETTER, [0.0, 0.0, 595.276, 419.528]];
+    let specs: Vec<PageSpec> = (1..=300)
+        .map(|n| {
+            spec(
+                sizes[(n - 1) % 3],
+                None,
+                (n % 7 == 0).then_some(90),
+                &format!("Page {n} of 300"),
+            )
+        })
+        .collect();
+    let mut doc = simple_doc(&specs);
+    // Big centered number so screenshots show which page is where.
+    for (i, (_, page_id)) in doc.get_pages().into_iter().enumerate() {
+        let b = sizes[i % 3];
+        let content = format!(
+            "BT /F1 120 Tf 0.75 g {} {} Td ({}) Tj ET\n",
+            b[2] / 2.0 - 100.0,
+            b[3] / 2.0 - 40.0,
+            i + 1
+        );
+        let extra = doc.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
+        let page = doc.get_dictionary_mut(page_id).expect("page");
+        let first = page.get(b"Contents").expect("contents").clone();
+        page.set("Contents", vec![first, Object::Reference(extra)]);
+    }
+    doc
+}
+
+/// A PDF that cannot be parsed: header and the start of an object, then nothing.
+fn broken_pdf() -> Vec<u8> {
+    b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R\n".to_vec()
+}
+
 fn main() {
     let large_requested = std::env::args().any(|a| a == "--large");
     let root: PathBuf = [env!("CARGO_MANIFEST_DIR"), "..", "..", "tests", "fixtures"]
@@ -551,6 +588,8 @@ fn main() {
     std::fs::create_dir_all(&root).expect("fixtures dir");
 
     save(rotated(), &root.join("rotated.pdf"), true);
+    save(pages_300(), &root.join("pages_300.pdf"), true);
+    std::fs::write(root.join("broken.pdf"), broken_pdf()).expect("broken.pdf");
     save(cropbox(), &root.join("cropbox.pdf"), true);
     save(mixed_sizes(), &root.join("mixed_sizes.pdf"), true);
     save(inherited(), &root.join("inherited.pdf"), true);
