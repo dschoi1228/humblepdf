@@ -74,8 +74,13 @@ export function visibleRange(layout: Layout, scrollTop: number, viewportHeight: 
   return [first, last];
 }
 
-/** The current page: the page under a line one third down the viewport. */
+/**
+ * The current page: the page under a line one third down the viewport, or the last page
+ * when the view is scrolled to the end (a short last page may never reach that line).
+ */
 export function currentPageAt(layout: Layout, scrollTop: number, viewportHeight: number): number {
+  const n = layout.tops.length;
+  if (n > 0 && scrollTop + viewportHeight >= layout.totalHeight - 1) return n - 1;
   return Math.max(0, pageAtY(layout, scrollTop + viewportHeight / 3));
 }
 

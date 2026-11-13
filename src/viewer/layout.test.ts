@@ -66,6 +66,8 @@ describe("computeLayout and ranges", () => {
     expect(currentPageAt(l, 0, 300)).toBe(0);
     expect(currentPageAt(l, l.tops[1] - 50, 300)).toBe(1);
     expect(currentPageAt(l, l.totalHeight, 300)).toBe(2);
+    // Scrolled to the very end: the last page even if it is above the one-third line.
+    expect(currentPageAt(l, l.totalHeight - 900, 900)).toBe(2);
   });
 });
 
