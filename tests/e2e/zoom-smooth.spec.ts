@@ -33,6 +33,18 @@ test("Ctrl+wheel zoom never shows a blank page in the viewport", async ({ page }
         // A canvas that never received a bitmap keeps the default 300x150 size.
         if (c.width === 300 && c.height === 150) blank++;
       }
+      // Points in the middle band of the viewport must be covered by a page (pages there
+      // are wider than the band at every zoom used below). Grey background = page missing.
+      const cx = vr.left + vr.width / 2;
+      for (const fy of [0.35, 0.45, 0.55, 0.65]) {
+        const el = document.elementFromPoint(cx, vr.top + vr.height * fy);
+        if (!el?.closest("[data-testid=page]")) {
+          // Allow the 16px gap between pages: check 10px above and below too.
+          const above = document.elementFromPoint(cx, vr.top + vr.height * fy - 10);
+          const below = document.elementFromPoint(cx, vr.top + vr.height * fy + 10);
+          if (!above?.closest("[data-testid=page]") && !below?.closest("[data-testid=page]")) blank++;
+        }
+      }
       w.__blank.frames++;
       if (blank) {
         w.__blank.blankFrames++;

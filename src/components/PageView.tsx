@@ -130,15 +130,21 @@ export function PageView() {
   const layout = useMemo(() => computeLayout(sizes, () => scale), [sizes, scale]);
   const contentWidth = Math.max(layout.maxWidth + 2 * VIEW_PADDING, vp.width);
 
-  // Track scroll position and size (one state update per frame).
+  // Track scroll position and size.
+  const syncViewport = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const next = { top: el.scrollTop, left: el.scrollLeft, width: el.clientWidth, height: el.clientHeight };
+    setVp((v) =>
+      v.top === next.top && v.left === next.left && v.width === next.width && v.height === next.height ? v : next,
+    );
+  }, []);
+  // User scrolling: at most one update per frame.
   const frame = useRef(0);
   const readViewport = useCallback(() => {
     cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (el) setVp({ top: el.scrollTop, left: el.scrollLeft, width: el.clientWidth, height: el.clientHeight });
-    });
-  }, []);
+    frame.current = requestAnimationFrame(syncViewport);
+  }, [syncViewport]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -179,16 +185,19 @@ export function PageView() {
     el.scrollTop = layout.tops[i] + fracY * layout.heights[i] - offY;
     el.scrollLeft = newLeft + fracX * layout.widths[i] - offX;
     if (anchor) useViewStore.getState().consumeAnchor();
-    readViewport();
-  }, [layout, contentWidth, readViewport]);
+    // Update the visible range before the browser paints. Waiting for the next frame
+    // painted one frame with the old scroll position: pages missing, grey background
+    // flashing (M1 human check).
+    syncViewport();
+  }, [layout, contentWidth, syncViewport]);
 
-  // Navigation requests (page input, thumbnails).
-  useEffect(() => {
+  // Navigation requests (page input, thumbnails); applied before paint like zoom.
+  useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!goTo || !el || !layout.tops.length) return;
     const i = Math.min(Math.max(goTo.page, 0), layout.tops.length - 1);
     el.scrollTop = layout.tops[i] - VIEW_PADDING / 2;
-    readViewport();
+    syncViewport();
     // Only on a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goTo?.nonce]);
