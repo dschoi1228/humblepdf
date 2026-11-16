@@ -41,7 +41,7 @@ npm run tauri dev            앱 실행 (개발 빌드)
 npm run dev                  브라우저 모드(백엔드 mock)로 프런트엔드만 실행. http://localhost:1420
                              ?open=/__fixtures/a.pdf,/__fixtures/b.pdf 로 fixture를 연다(개발 서버 전용 경로).
                              브라우저 모드의 이미지는 core가 계산한 레이아웃(out/e2e/info/)이 있어야 열린다.
-                             npm run e2e를 한 번 돌리면 생긴다
+                             npm run e2e를 한 번 돌리면 생긴다. 저장은 out/ 아래에만 하며 디버그 CLI가 필요하다(같은 명령이 빌드)
 npm run build:exe            포터블 exe 빌드 → target/release/pdf-editor.exe (설치 프로그램 없음)
 cargo test --workspace       코어·CLI 테스트 (출력 PDF 재파싱 테스트 포함)
 npm test                     프런트엔드 단위 테스트 (Vitest. 좌표 변환, core 상자 vs pdf.js)
@@ -52,7 +52,7 @@ npm run lint                 ESLint + tsc 타입 검사
 
 npm run fixtures             합성 fixture 재생성 (tests/fixtures/, 50MB 파일은 tests/fixtures/large/)
 npm run bindings             Rust 모델 → src/bindings/*.ts 재생성
-npm run sample               out/m0_sample.pdf 생성 (사람 확인용)
+npm run sample               out/m0_sample.pdf, out/m2_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
 cargo run -p pdf-editor-cli -- inspect <파일> [--password <pw>]
 cargo run -p pdf-editor-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
 cargo run -p pdf-editor-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]

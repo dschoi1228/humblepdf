@@ -149,7 +149,7 @@
 
 ### D22. UI: Tailwind CSS + shadcn/ui (M1)
 
-- 결정: 스타일은 Tailwind CSS 4(`@tailwindcss/vite`)로 한다. 부품은 shadcn/ui(Radix 기반) 중 필요한 것만 `src/components/ui/`에 복사해 쓴다: button, dialog, input, tooltip, scroll-area, separator, sonner. 아이콘은 lucide-react, 알림은 sonner를 쓴다.
+- 결정: 스타일은 Tailwind CSS 4(`@tailwindcss/vite`)로 한다. 부품은 shadcn/ui(Radix 기반) 중 필요한 것만 `src/components/ui/`에 복사해 쓴다: button, dialog, input, tooltip, scroll-area, separator, sonner, context-menu(M2, 이미 들어 있는 `radix-ui` 사용). 아이콘은 lucide-react, 알림은 sonner를 쓴다.
 - 이유: 사용자가 UI 완성도를 우선했다(D2). 대화상자의 포커스와 키보드 처리 같은 접근성을 직접 구현하지 않아도 된다.
 - 설정:
   - shadcn이 생성하는 `cn`은 shadcn 팀의 `cn` 패키지(MIT)다. `clsx`와 `tailwind-merge`를 대신하므로 둘은 넣지 않는다.
@@ -163,15 +163,45 @@
 - 이유: 구독 범위를 좁힐 수 있어 300쪽 문서에서도 다시 그리기를 줄인다. M2의 Undo는 순수 함수 위에 이력을 얹어 구현한다.
 - 비밀번호는 `documentStore`의 소스 메타데이터에만 둔다. 메모리에만 있고 모델에는 넣지 않는다(SPEC 4).
 
+### D24. 썸네일 끌어 옮기기는 직접 구현 (M2)
+
+- 결정: 썸네일 정렬은 라이브러리 없이 포인터 이벤트로 구현한다(`src/viewer/thumbDrag.ts`, `ThumbnailPanel.tsx`).
+  - 4px 넘게 움직이면 끌기를 시작한다.
+  - 놓을 위치는 썸네일 레이아웃에서 계산한다. 포인터 아래, 가운데를 넘지 않은 첫 쪽의 앞이다.
+  - 패널 가장자리 48px 안에서는 자동으로 스크롤한다. Esc를 누르면 취소한다.
+  - HTML5 드래그 API는 쓰지 않는다(SPEC 6.3).
+- 이유: 사용자 선택.
+  - dnd-kit 안정판(`@dnd-kit/core` 6.3.1)은 2024-12 이후 갱신이 없다.
+  - 새 API(`@dnd-kit/react`)는 0.5로 1.0 전이다.
+  - dnd-kit의 정렬은 모든 항목이 DOM에 있다고 가정해, 보이는 썸네일만 그리는 가상 목록(300쪽)과 맞지 않는다.
+- 비용: 키보드로 옮기는 기능은 없다. 키보드로는 회전, 삭제, 실행 취소만 할 수 있다.
+
+### D25. Undo는 문서 스냅샷 이력 (M2)
+
+- 결정: 모델을 바꾸는 순수 함수(`src/state/model.ts`)의 결과를 스냅샷으로 쌓는다(`src/state/history.ts`, 100칸).
+  - 이력에 넣는 것: 파일 추가, 순서 변경, 삭제, 회전, 이미지 맞춤
+  - 이력에 넣지 않는 것: 선택, 줌, 현재 쪽
+  - 바뀐 것이 없는 동작은 기록하지 않는다.
+  - "저장하지 않은 변경"은 현재 모델이 마지막으로 저장한 모델과 같은 객체인지로 판정한다. 그래서 저장한 상태로 Undo나 Redo를 해서 돌아오면 다시 "변경 없음"이 된다.
+- 이유: 바뀌지 않은 페이지 객체를 스냅샷끼리 공유하므로 300쪽에서도 비용이 작다. 명령마다 되돌리는 코드를 따로 쓸 필요가 없다. M3 이후의 객체 편집도 같은 방식으로 얹는다.
+
+### D26. 브라우저 모드 저장은 개발 서버의 `/__export` (M2)
+
+- 결정: mock 백엔드의 저장은 개발 서버 경로 `/__export`에 모델을 보낸다. 서버는 디버그 CLI의 `export`를 실행한다.
+  - 경로 변환: 소스 경로 `/__fixtures/…`, `/__out/…`를 실제 파일로 바꾼다.
+  - 출력 위치: `/__out/` 아래만 허용한다. 예외로 소스 경로와 같은 출력은 그대로 넘겨 core가 거부하게 한다.
+  - 저장 대화상자는 `window.prompt`로 대신한다.
+- 이유: E2E에서도 실제 core로 저장 흐름 전체(경로 선택, 원본 거부, 진행 표시, 결과 검사)를 확인한다.
+- 범위: `/__fixtures/`처럼 개발 서버 전용(`apply: "serve"`)이며 빌드에 들어가지 않는다. CLI가 빌드되어 있어야 한다(`npm run e2e`가 빌드한다).
+
 ## 미정
 
 | 항목 | 기본 제안 | 정할 시점 |
 |---|---|---|
 | 앱 이름과 식별자 | 가칭 `pdf-editor`, 식별자 `com.pdfeditor.app` | 공개 전. M0는 가칭으로 진행 |
 | 라이선스 | MIT | 공개 전 |
-| 썸네일 정렬 | dnd-kit (포인터 이벤트 기반, SPEC 6.3) | M2 |
 
-확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23).
+확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24).
 ## 고정한 버전 (2026-11-13, M0·M1)
 
 정확한 버전으로 고정한다(`Cargo.toml`의 `=`, `package.json`의 정확한 버전). crates.io의 `tauri` 최신판은 3.0.0-alpha이므로 2.x를 명시한다.
