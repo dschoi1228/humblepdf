@@ -21,9 +21,12 @@ import {
 import { renderPageCanvas } from "../viewer/pageRenderer";
 import { PRIORITY, scheduler } from "../viewer/renderScheduler";
 import { markMainRendered } from "../viewer/testHooks";
+import { getPageBitmap, putPageBitmap } from "../viewer/pageBitmapCache";
 
 /** Pages mounted above and below the visible range. */
 const OVERSCAN = 2;
+/** Delay before re-rendering a page that already shows a (stretched) bitmap. */
+const RERENDER_DELAY_MS = 150;
 
 type Viewport = { top: number; left: number; width: number; height: number };
 
@@ -44,29 +47,56 @@ const PageSlot = memo(function PageSlot(props: {
   const key = `main:${page.id}`;
   const rotation = displayRotation(page.baseRotation, page.userRotation);
 
+  /** Whether the canvas shows a bitmap (at any scale); also exposed for tests. */
+  const hasPixels = useRef(false);
+  const show = useCallback((c: HTMLCanvasElement) => {
+    const target = canvasRef.current;
+    if (!target) return;
+    target.width = c.width;
+    target.height = c.height;
+    target.getContext("2d")!.drawImage(c, 0, 0);
+    hasPixels.current = true;
+    target.dataset.hasPixels = "1";
+  }, []);
+
+  // A remounted page shows its last bitmap before the first paint (no blank flash).
+  useLayoutEffect(() => {
+    if (hasPixels.current) return;
+    const cached = getPageBitmap(page.id, rotation);
+    if (cached) show(cached);
+  }, [page.id, rotation, show]);
+
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
-    // The previous bitmap stays visible (stretched by CSS) until the new one is ready.
-    scheduler.schedule(key, priority, async (signal) => {
-      let c: HTMLCanvasElement;
-      try {
-        c = await renderPageCanvas(page, meta, scale, dpr, signal);
-      } catch (e) {
-        if (!signal.aborted && (e as Error)?.name !== "RenderAborted") setFailed(true);
-        throw e;
-      }
-      const target = canvasRef.current;
-      if (signal.aborted || !target) return;
-      target.width = c.width;
-      target.height = c.height;
-      target.getContext("2d")!.drawImage(c, 0, 0);
-      setFailed(false);
-      markMainRendered(page.id, true);
-    });
+    const run = () =>
+      scheduler.schedule(key, priority, async (signal) => {
+        let c: HTMLCanvasElement;
+        try {
+          c = await renderPageCanvas(page, meta, scale, dpr, signal);
+        } catch (e) {
+          if (!signal.aborted && (e as Error)?.name !== "RenderAborted") setFailed(true);
+          throw e;
+        }
+        if (signal.aborted || !canvasRef.current) return;
+        show(c);
+        putPageBitmap(page.id, rotation, c);
+        setFailed(false);
+        markMainRendered(page.id, true);
+      });
+    // A page that already shows a bitmap keeps it (stretched by CSS) while the zoom is
+    // still changing, and re-renders once the scale has settled.
+    if (hasPixels.current) {
+      const t = setTimeout(run, RERENDER_DELAY_MS);
+      return () => {
+        clearTimeout(t);
+        scheduler.cancel(key);
+      };
+    }
+    run();
     return () => scheduler.cancel(key);
     // `priority` changes are handled below without re-rendering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, page, meta, scale, rotation]);
+  }, [key, page, meta, scale, rotation, show]);
 
   useEffect(() => scheduler.reprioritize(key, priority), [key, priority]);
   useEffect(() => () => markMainRendered(page.id, false), [page.id]);
