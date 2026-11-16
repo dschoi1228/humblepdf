@@ -45,6 +45,8 @@ export interface Backend {
    * is cancelled when it resolves false. Returns an unsubscribe function.
    */
   onCloseRequested(guard: { isDirty: () => boolean; confirm: () => Promise<boolean> }): Promise<() => void>;
+  /** Sets the window title (follows the UI language, D27). */
+  setTitle(title: string): Promise<void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */
   benchConfig(): Promise<string | null>;
   benchReport(report: string): Promise<void>;

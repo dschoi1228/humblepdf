@@ -6,7 +6,7 @@ import { backend, isBackendError } from "../backend";
 import { isDirty, useDocumentStore } from "../state/documentStore";
 import { exportModel } from "../state/model";
 import { useViewStore } from "../state/viewStore";
-import { errorMessage, ko } from "../strings/ko";
+import { errorMessage, strings } from "../i18n";
 import { clearThumbnails } from "../viewer/thumbCache";
 import { clearPageBitmaps } from "../viewer/pageBitmapCache";
 import { clearSources } from "../viewer/sourceCache";
@@ -33,22 +33,22 @@ async function exportTo(path: string): Promise<ExportResult> {
     const summary = await backend.exportDocument(model, path, passwords);
     useDocumentStore.getState().markSaved(doc, path);
     const name = path.split(/[\\/]/).pop() ?? path;
-    toast.success(ko.save.saved(name), {
-      description: ko.save.savedDetail(summary.pageCount, formatBytes(summary.bytes)),
+    toast.success(strings().save.saved(name), {
+      description: strings().save.savedDetail(summary.pageCount, formatBytes(summary.bytes)),
     });
-    if (encrypted) toast.info(ko.save.notEncrypted);
+    if (encrypted) toast.info(strings().save.notEncrypted);
     for (const w of summary.warnings) {
-      if (w.code === "missing_glyphs") toast.warning(ko.save.missingGlyphs(w.chars.join(" ")));
+      if (w.code === "missing_glyphs") toast.warning(strings().save.missingGlyphs(w.chars.join(" ")));
     }
     return "ok";
   } catch (e) {
     const code = isBackendError(e) ? e.code : "generic";
     if (code === "output_is_source") {
-      toast.error(ko.save.outputIsSource);
+      toast.error(strings().save.outputIsSource);
       return "is_source";
     }
     console.error("save failed", e);
-    toast.error(ko.save.failed, { description: errorMessage(code) });
+    toast.error(strings().save.failed, { description: errorMessage(code) });
     return "failed";
   } finally {
     useSaveStatus.setState({ saving: false });

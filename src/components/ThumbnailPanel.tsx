@@ -8,7 +8,7 @@ import { movePagesTo } from "../app/pageActions";
 import { useDocumentStore } from "../state/documentStore";
 import type { SourceMeta } from "../state/model";
 import { useViewStore } from "../state/viewStore";
-import { ko } from "../strings/ko";
+import { useStrings } from "../i18n";
 import { computeLayout, pageDisplaySize, visibleRange } from "../viewer/layout";
 import { renderLook, renderPageCanvas } from "../viewer/pageRenderer";
 import { PRIORITY, scheduler } from "../viewer/renderScheduler";
@@ -37,6 +37,7 @@ const Thumb = memo(function Thumb(props: {
   onPress: PressHandler;
   onClick: ClickHandler;
 }) {
+  const t = useStrings();
   const { page, meta, index, onPress, onClick } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheKey = `${page.id}:${renderLook(page)}`;
@@ -44,11 +45,11 @@ const Thumb = memo(function Thumb(props: {
 
   useEffect(() => {
     const draw = (c: HTMLCanvasElement) => {
-      const t = canvasRef.current;
-      if (!t) return;
-      t.width = c.width;
-      t.height = c.height;
-      t.getContext("2d")!.drawImage(c, 0, 0);
+      const target = canvasRef.current;
+      if (!target) return;
+      target.width = c.width;
+      target.height = c.height;
+      target.getContext("2d")!.drawImage(c, 0, 0);
     };
     const cached = thumbCache.get(cacheKey);
     if (cached) {
@@ -92,7 +93,7 @@ const Thumb = memo(function Thumb(props: {
         <canvas ref={canvasRef} className="block size-full" />
       </span>
       <span className={"mt-1 block text-xs " + (props.selected ? "font-semibold text-blue-700" : "text-neutral-600")}>
-        {ko.thumbnails.page(index + 1)}
+        {t.thumbnails.page(index + 1)}
       </span>
     </button>
   );
@@ -109,6 +110,7 @@ type Drag = {
 };
 
 export function ThumbnailPanel() {
+  const t = useStrings();
   const pages = useDocumentStore((s) => s.doc.pages);
   const sources = useDocumentStore((s) => s.sources);
   const selected = useDocumentStore((s) => s.selection.ids);
@@ -289,7 +291,7 @@ export function ThumbnailPanel() {
     <PageContextMenu>
       <nav
         ref={scrollRef}
-        aria-label={ko.thumbnails.label}
+        aria-label={t.thumbnails.label}
         className={
           "relative h-full w-[180px] shrink-0 overflow-y-auto border-r border-neutral-300 bg-neutral-100 select-none " +
           (dragView ? "cursor-grabbing" : "")
@@ -314,7 +316,7 @@ export function ThumbnailPanel() {
             className="pointer-events-none fixed z-50 rounded bg-blue-600 px-2 py-0.5 text-xs text-white shadow"
             style={{ left: dragView.x + 14, top: dragView.y + 10 }}
           >
-            {ko.thumbnails.dragging(dragView.ids.size)}
+            {t.thumbnails.dragging(dragView.ids.size)}
           </div>
         )}
       </nav>

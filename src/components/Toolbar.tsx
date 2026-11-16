@@ -2,6 +2,7 @@ import {
   File,
   FilePlus2,
   Image,
+  Languages,
   MoveHorizontal,
   PanelLeft,
   Redo2,
@@ -26,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDocumentStore } from "../state/documentStore";
 import { useViewStore } from "../state/viewStore";
-import { ko } from "../strings/ko";
+import { LOCALE_NAMES, LOCALES, useLocaleStore, useStrings, type Locale } from "../i18n";
 import { MAX_SCALE, MIN_SCALE } from "../viewer/layout";
 
 function IconButton(props: {
@@ -58,6 +59,7 @@ function IconButton(props: {
 }
 
 function PageNumberInput() {
+  const t = useStrings();
   const total = useDocumentStore((s) => s.doc.pages.length);
   const current = useViewStore((s) => s.currentPage);
   // Text being typed; null shows the current page.
@@ -74,7 +76,7 @@ function PageNumberInput() {
   return (
     <div className="flex items-center gap-1.5 text-sm">
       <Input
-        aria-label={ko.toolbar.pageNumber}
+        aria-label={t.toolbar.pageNumber}
         className="h-8 w-14 text-center"
         inputMode="numeric"
         value={total ? text : ""}
@@ -87,13 +89,37 @@ function PageNumberInput() {
         data-testid="page-input"
       />
       <span className="text-neutral-600 tabular-nums" data-testid="page-total">
-        {ko.toolbar.pageOf(total)}
+        {t.toolbar.pageOf(total)}
       </span>
     </div>
   );
 }
 
 const Divider = () => <Separator orientation="vertical" className="mx-1 !h-6" />;
+
+/** UI language picker (D27). Language names are shown in their own language. */
+function LanguagePicker() {
+  const t = useStrings();
+  const locale = useLocaleStore((s) => s.locale);
+  return (
+    <label className="flex items-center gap-1 text-sm text-neutral-700">
+      <Languages className="size-4" aria-hidden />
+      <span className="sr-only">{t.toolbar.language}</span>
+      <select
+        className="h-8 rounded-md border border-neutral-300 bg-white px-1.5"
+        value={locale}
+        onChange={(e) => useLocaleStore.getState().setLocale(e.target.value as Locale)}
+        data-testid="language"
+      >
+        {LOCALES.map((l) => (
+          <option key={l} value={l} lang={l}>
+            {LOCALE_NAMES[l]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 /** Fit of the image pages the page commands act on: selection, or the current page. */
 function useTargetImageFit(): "a4" | "image" | "mixed" | null {
@@ -107,6 +133,7 @@ function useTargetImageFit(): "a4" | "image" | "mixed" | null {
 }
 
 export function Toolbar() {
+  const t = useStrings();
   const empty = useDocumentStore((s) => s.doc.pages.length === 0);
   const canUndo = useDocumentStore((s) => s.history.past.length > 0);
   const canRedo = useDocumentStore((s) => s.history.future.length > 0);
@@ -118,68 +145,70 @@ export function Toolbar() {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-neutral-300 bg-white px-2">
-      <IconButton label={`${ko.toolbar.newDocument} (Ctrl+N)`} onClick={() => void newDocument()} testId="new-document">
+      <IconButton label={`${t.toolbar.newDocument} (Ctrl+N)`} onClick={() => void newDocument()} testId="new-document">
         <File />
       </IconButton>
       <Button variant="ghost" onClick={() => void pickAndAddFiles()} data-testid="add-files">
         <FilePlus2 />
-        {ko.toolbar.addFiles}
+        {t.toolbar.addFiles}
       </Button>
-      <IconButton label={`${ko.save.save} (Ctrl+S)`} disabled={empty} onClick={() => void save()} testId="save">
+      <IconButton label={`${t.save.save} (Ctrl+S)`} disabled={empty} onClick={() => void save()} testId="save">
         <Save />
       </IconButton>
-      <IconButton label={`${ko.save.saveAs} (Ctrl+Shift+S)`} disabled={empty} onClick={() => void saveAs()} testId="save-as">
+      <IconButton label={`${t.save.saveAs} (Ctrl+Shift+S)`} disabled={empty} onClick={() => void saveAs()} testId="save-as">
         <SaveAll />
       </IconButton>
       <Divider />
-      <IconButton label={`${ko.history.undo} (Ctrl+Z)`} disabled={!canUndo} onClick={() => useDocumentStore.getState().undo()} testId="undo">
+      <IconButton label={`${t.history.undo} (Ctrl+Z)`} disabled={!canUndo} onClick={() => useDocumentStore.getState().undo()} testId="undo">
         <Undo2 />
       </IconButton>
-      <IconButton label={`${ko.history.redo} (Ctrl+Y)`} disabled={!canRedo} onClick={() => useDocumentStore.getState().redo()} testId="redo">
+      <IconButton label={`${t.history.redo} (Ctrl+Y)`} disabled={!canRedo} onClick={() => useDocumentStore.getState().redo()} testId="redo">
         <Redo2 />
       </IconButton>
       <Divider />
-      <IconButton label={`${ko.pages.rotateLeft} (Ctrl+[)`} disabled={empty} onClick={() => rotateTargets(-90)} testId="rotate-left">
+      <IconButton label={`${t.pages.rotateLeft} (Ctrl+[)`} disabled={empty} onClick={() => rotateTargets(-90)} testId="rotate-left">
         <RotateCcw />
       </IconButton>
-      <IconButton label={`${ko.pages.rotateRight} (Ctrl+])`} disabled={empty} onClick={() => rotateTargets(90)} testId="rotate-right">
+      <IconButton label={`${t.pages.rotateRight} (Ctrl+])`} disabled={empty} onClick={() => rotateTargets(90)} testId="rotate-right">
         <RotateCw />
       </IconButton>
-      <IconButton label={`${ko.pages.delete} (Delete)`} disabled={empty} onClick={deleteTargets} testId="delete-pages">
+      <IconButton label={`${t.pages.delete} (Delete)`} disabled={empty} onClick={deleteTargets} testId="delete-pages">
         <Trash2 />
       </IconButton>
       {imageFit && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-md bg-neutral-100 p-0.5" role="group" aria-label={ko.pages.imageFit}>
-          <IconButton label={ko.pages.fitA4} pressed={imageFit === "a4"} onClick={() => setFitOfTargets("a4")} testId="fit-a4">
+        <div className="ml-1 flex items-center gap-0.5 rounded-md bg-neutral-100 p-0.5" role="group" aria-label={t.pages.imageFit}>
+          <IconButton label={t.pages.fitA4} pressed={imageFit === "a4"} onClick={() => setFitOfTargets("a4")} testId="fit-a4">
             <RectangleVertical />
           </IconButton>
-          <IconButton label={ko.pages.fitImage} pressed={imageFit === "image"} onClick={() => setFitOfTargets("image")} testId="fit-image">
+          <IconButton label={t.pages.fitImage} pressed={imageFit === "image"} onClick={() => setFitOfTargets("image")} testId="fit-image">
             <Image />
           </IconButton>
         </div>
       )}
       <Divider />
-      <IconButton label={ko.toolbar.toggleThumbnails} pressed={thumbnailsOpen} onClick={() => view().toggleThumbnails()}>
+      <IconButton label={t.toolbar.toggleThumbnails} pressed={thumbnailsOpen} onClick={() => view().toggleThumbnails()}>
         <PanelLeft />
       </IconButton>
       <Divider />
-      <IconButton label={ko.toolbar.zoomOut} disabled={empty || scale <= MIN_SCALE} onClick={() => view().zoomStep(-1)} testId="zoom-out">
+      <IconButton label={t.toolbar.zoomOut} disabled={empty || scale <= MIN_SCALE} onClick={() => view().zoomStep(-1)} testId="zoom-out">
         <ZoomOut />
       </IconButton>
-      <span className="w-14 text-center text-sm tabular-nums" aria-label={ko.toolbar.zoomLevel} data-testid="zoom-level">
+      <span className="w-14 text-center text-sm tabular-nums" aria-label={t.toolbar.zoomLevel} data-testid="zoom-level">
         {Math.round(scale * 100)}%
       </span>
-      <IconButton label={ko.toolbar.zoomIn} disabled={empty || scale >= MAX_SCALE} onClick={() => view().zoomStep(1)} testId="zoom-in">
+      <IconButton label={t.toolbar.zoomIn} disabled={empty || scale >= MAX_SCALE} onClick={() => view().zoomStep(1)} testId="zoom-in">
         <ZoomIn />
       </IconButton>
-      <IconButton label={ko.toolbar.fitWidth} disabled={empty} pressed={zoomMode === "fitWidth"} onClick={() => view().setZoomMode("fitWidth")} testId="fit-width">
+      <IconButton label={t.toolbar.fitWidth} disabled={empty} pressed={zoomMode === "fitWidth"} onClick={() => view().setZoomMode("fitWidth")} testId="fit-width">
         <MoveHorizontal />
       </IconButton>
-      <IconButton label={ko.toolbar.fitPage} disabled={empty} pressed={zoomMode === "fitPage"} onClick={() => view().setZoomMode("fitPage")} testId="fit-page">
+      <IconButton label={t.toolbar.fitPage} disabled={empty} pressed={zoomMode === "fitPage"} onClick={() => view().setZoomMode("fitPage")} testId="fit-page">
         <Scan />
       </IconButton>
-      <div className="ml-auto pr-2">
+      <div className="ml-auto flex items-center gap-3 pr-2">
         <PageNumberInput />
+        <Divider />
+        <LanguagePicker />
       </div>
     </header>
   );

@@ -11,7 +11,7 @@ import type { PageInfo } from "../bindings/PageInfo";
 import type { Rotation } from "../bindings/Rotation";
 import type { SourceInfo } from "../bindings/SourceInfo";
 import { baseName } from "../state/model";
-import { ko } from "../strings/ko";
+import { strings } from "../i18n";
 import { openPdf } from "../viewer/pdfjs";
 import type { Backend, BackendError, OpenedSource, PickedFile } from "./types";
 
@@ -133,7 +133,7 @@ export const mockBackend: Backend = {
   async pickSavePath(defaultPath) {
     // Never suggest writing into the fixtures folder.
     const suggested = defaultPath.startsWith("/__fixtures/") ? `/__out/saved/${baseName(defaultPath)}` : defaultPath;
-    return window.prompt(ko.save.title, suggested);
+    return window.prompt(strings().save.title, suggested);
   },
 
   async exportDocument(model, outPath, passwords) {
@@ -153,6 +153,10 @@ export const mockBackend: Backend = {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  },
+
+  async setTitle(title) {
+    document.title = title;
   },
 
   async benchConfig() {

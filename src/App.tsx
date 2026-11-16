@@ -16,6 +16,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { isDirty, useDocumentStore } from "./state/documentStore";
 import { baseName } from "./state/model";
 import { useViewStore } from "./state/viewStore";
+import { dictionary, useLocaleStore } from "./i18n";
 import "./viewer/testHooks";
 
 /** Resolves when the first page of the document has been drawn. */
@@ -61,6 +62,13 @@ export default function App() {
   const hasPages = useDocumentStore((s) => s.doc.pages.length > 0);
   const thumbnailsOpen = useViewStore((s) => s.thumbnailsOpen);
   const started = useRef(false);
+  const locale = useLocaleStore((s) => s.locale);
+
+  // The window title and the document language follow the UI language (D27).
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    void backend.setTitle(dictionary(locale).appTitle).catch(() => {});
+  }, [locale]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

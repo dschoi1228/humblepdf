@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Document } from "../bindings/Document";
 import type { SourceMeta } from "../state/model";
 import { defaultSavePath, formatBytes, withPdfExtension } from "./savePath";
 import { shortcutFor } from "./shortcuts";
+import { useLocaleStore } from "../i18n";
 
 const page = (sourceId: string) => ({
   id: sourceId,
@@ -18,7 +19,9 @@ const meta = (id: string, path: string, name: string) =>
   ({ id, path, name, info: { kind: "pdf", pages: [], encrypted: false, image: null } }) as SourceMeta;
 
 describe("defaultSavePath", () => {
+  afterEach(() => useLocaleStore.setState({ locale: "ko" }));
   it("uses the source of the first page, in its folder", () => {
+    useLocaleStore.setState({ locale: "ko" });
     const doc: Document = { schemaVersion: 1, sources: [], pages: [page("b"), page("a")] };
     const sources = {
       a: meta("a", "C:\\docs\\a.pdf", "a.pdf"),
@@ -26,6 +29,14 @@ describe("defaultSavePath", () => {
     };
     expect(defaultSavePath(doc, sources)).toBe("D:\\사진 폴더\\계약서 스캔_편집.pdf");
     expect(defaultSavePath({ ...doc, pages: [page("a")] }, sources)).toBe("C:\\docs\\a_편집.pdf");
+  });
+  it("uses the suffix of the UI language", () => {
+    const doc: Document = { schemaVersion: 1, sources: [], pages: [page("a")] };
+    const sources = { a: meta("a", "C:\\docs\\a.pdf", "a.pdf") };
+    useLocaleStore.setState({ locale: "en" });
+    expect(defaultSavePath(doc, sources)).toBe("C:\\docs\\a_edited.pdf");
+    useLocaleStore.setState({ locale: "ja" });
+    expect(defaultSavePath(doc, sources)).toBe("C:\\docs\\a_編集.pdf");
   });
   it("adds the .pdf extension only when missing", () => {
     expect(withPdfExtension("C:\\x\\out")).toBe("C:\\x\\out.pdf");

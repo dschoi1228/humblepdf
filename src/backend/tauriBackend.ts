@@ -4,7 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type { ExportSummary } from "../bindings/ExportSummary";
 import { baseName } from "../state/model";
-import { ko } from "../strings/ko";
+import { strings } from "../i18n";
 import type { Backend, OpenedSource, PickedFile } from "./types";
 
 const toPicked = (paths: string[]): PickedFile[] => paths.map((path) => ({ path, name: baseName(path) }));
@@ -31,7 +31,7 @@ export const tauriBackend: Backend = {
   async pickFiles() {
     const r = await open({
       multiple: true,
-      filters: [{ name: ko.fileFilterName, extensions: ["pdf", "jpg", "jpeg", "png"] }],
+      filters: [{ name: strings().fileFilterName, extensions: ["pdf", "jpg", "jpeg", "png"] }],
     });
     if (r === null) return null;
     return toPicked(Array.isArray(r) ? r : [r]);
@@ -50,6 +50,11 @@ export const tauriBackend: Backend = {
     return getCurrentWindow().onCloseRequested(async (event) => {
       if (guard.isDirty() && !(await guard.confirm())) event.preventDefault();
     });
+  },
+
+  async setTitle(title) {
+    document.title = title;
+    await getCurrentWindow().setTitle(title);
   },
 
   benchConfig() {

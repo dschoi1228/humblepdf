@@ -4,7 +4,7 @@ import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { ImageFit } from "../bindings/ImageFit";
 import { deleteTargets, imageTargets, rotateTargets, setFitOfTargets } from "../app/pageActions";
-import { ko } from "../strings/ko";
+import { useStrings } from "../i18n";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/context-menu";
 
 export function PageContextMenu(props: { children: ReactNode }) {
+  const t = useStrings();
   const [images, setImages] = useState<{ count: number; fit: ImageFit | null }>({ count: 0, fit: null });
   return (
     // Non-modal: a modal menu hides the app with aria-hidden while the clicked thumbnail
@@ -27,26 +28,26 @@ export function PageContextMenu(props: { children: ReactNode }) {
       <ContextMenuContent className="w-52" data-testid="page-menu">
         <ContextMenuItem onSelect={() => rotateTargets(-90)}>
           <RotateCcw />
-          {ko.pages.rotateLeft}
+          {t.pages.rotateLeft}
           <ContextMenuShortcut>Ctrl+[</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => rotateTargets(90)}>
           <RotateCw />
-          {ko.pages.rotateRight}
+          {t.pages.rotateRight}
           <ContextMenuShortcut>Ctrl+]</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem variant="destructive" onSelect={deleteTargets}>
           <Trash2 />
-          {ko.pages.delete}
+          {t.pages.delete}
           <ContextMenuShortcut>Del</ContextMenuShortcut>
         </ContextMenuItem>
         {images.count > 0 && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuLabel>{ko.pages.imageFit}</ContextMenuLabel>
+            <ContextMenuLabel>{t.pages.imageFit}</ContextMenuLabel>
             <ContextMenuRadioGroup value={images.fit ?? ""} onValueChange={(v) => setFitOfTargets(v as ImageFit)}>
-              <ContextMenuRadioItem value="a4">{ko.pages.fitA4}</ContextMenuRadioItem>
-              <ContextMenuRadioItem value="image">{ko.pages.fitImage}</ContextMenuRadioItem>
+              <ContextMenuRadioItem value="a4">{t.pages.fitA4}</ContextMenuRadioItem>
+              <ContextMenuRadioItem value="image">{t.pages.fitImage}</ContextMenuRadioItem>
             </ContextMenuRadioGroup>
           </>
         )}

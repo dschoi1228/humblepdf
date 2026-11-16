@@ -1,4 +1,5 @@
-// All UI strings live here (CLAUDE.md, D14).
+// Korean UI strings. The Korean dictionary defines the keys; en.ts and ja.ts must match
+// it exactly (type check and src/i18n/i18n.test.ts). See CLAUDE.md, D14, D27.
 export const ko = {
   appTitle: "PDF 에디터",
   fileFilterName: "PDF와 이미지",
@@ -14,6 +15,7 @@ export const ko = {
     newDocument: "새 문서",
     pageNumber: "쪽 번호",
     pageOf: (total: number) => `/ ${total}`,
+    language: "언어",
   },
 
   empty: {
@@ -88,11 +90,5 @@ export const ko = {
     output_is_source: "열려 있는 원본 파일에는 저장할 수 없습니다. 다른 이름을 고르세요.",
     invalid_model: "문서 상태가 올바르지 않아 저장하지 못했습니다.",
     generic: "작업을 완료하지 못했습니다.",
-  } as Record<string, string>,
+  },
 } as const;
-
-export type Strings = typeof ko;
-
-export function errorMessage(code: string): string {
-  return ko.errors[code] ?? ko.errors.generic;
-}

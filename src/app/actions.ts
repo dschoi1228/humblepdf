@@ -4,7 +4,7 @@ import type { PickedFile } from "../backend/types";
 import { openFiles } from "../files/addFiles";
 import { useDocumentStore } from "../state/documentStore";
 import { usePasswordPrompt } from "../state/passwordPrompt";
-import { errorMessage, ko } from "../strings/ko";
+import { errorMessage, strings } from "../i18n";
 
 /** Opens the files (name order, passwords, errors) and appends them to the document. */
 export async function addFiles(files: PickedFile[]): Promise<number> {
@@ -14,7 +14,7 @@ export async function addFiles(files: PickedFile[]): Promise<number> {
     passwordAccepted: () => usePasswordPrompt.getState().close(),
     notifyError: (name, code) => {
       usePasswordPrompt.getState().close();
-      toast.error(ko.addFailed(name), { description: errorMessage(code) });
+      toast.error(strings().addFailed(name), { description: errorMessage(code) });
     },
   });
   if (opened.length) useDocumentStore.getState().addOpened(opened);

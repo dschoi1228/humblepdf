@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { usePasswordPrompt } from "../state/passwordPrompt";
-import { ko } from "../strings/ko";
+import { useStrings } from "../i18n";
 
 export function PasswordDialog() {
   const pending = usePasswordPrompt((s) => s.pending);
@@ -26,6 +26,7 @@ export function PasswordDialog() {
 }
 
 function PasswordForm() {
+  const t = useStrings();
   const pending = usePasswordPrompt((s) => s.pending);
   const answer = usePasswordPrompt((s) => s.answer);
   const [value, setValue] = useState("");
@@ -39,14 +40,14 @@ function PasswordForm() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>{ko.password.title}</DialogTitle>
-            <DialogDescription>{pending ? ko.password.description(pending.fileName) : ""}</DialogDescription>
+            <DialogTitle>{t.password.title}</DialogTitle>
+            <DialogDescription>{pending ? t.password.description(pending.fileName) : ""}</DialogDescription>
           </DialogHeader>
           <Input
             type="password"
             autoFocus
-            placeholder={ko.password.placeholder}
-            aria-label={ko.password.placeholder}
+            placeholder={t.password.placeholder}
+            aria-label={t.password.placeholder}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             aria-invalid={pending?.wrong || undefined}
@@ -54,15 +55,15 @@ function PasswordForm() {
           />
           {pending?.wrong && (
             <p className="text-sm text-destructive" role="alert" data-testid="password-wrong">
-              {ko.password.wrong}
+              {t.password.wrong}
             </p>
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" disabled={pending?.checking} onClick={() => answer(null)}>
-              {ko.password.cancel}
+              {t.password.cancel}
             </Button>
             <Button type="submit" disabled={pending?.checking} data-testid="password-ok">
-              {ko.password.ok}
+              {t.password.ok}
             </Button>
           </DialogFooter>
         </form>

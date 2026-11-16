@@ -15,6 +15,8 @@ export default defineConfig({
     channel: "msedge",
     viewport: { width: 1280, height: 1000 },
     deviceScaleFactor: 1,
+    // Existing tests read Korean UI text; i18n.spec.ts sets its own locales.
+    locale: "ko-KR",
   },
   webServer: {
     command: "npm run dev",

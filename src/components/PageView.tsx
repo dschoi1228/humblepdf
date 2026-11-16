@@ -5,7 +5,7 @@ import type { Page } from "../bindings/Page";
 import { useDocumentStore } from "../state/documentStore";
 import type { SourceMeta } from "../state/model";
 import { useViewStore } from "../state/viewStore";
-import { ko } from "../strings/ko";
+import { useStrings } from "../i18n";
 import {
   computeLayout,
   currentPageAt,
@@ -40,6 +40,7 @@ const PageSlot = memo(function PageSlot(props: {
   width: number;
   height: number;
 }) {
+  const t = useStrings();
   const { page, meta, scale, priority } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
@@ -91,9 +92,9 @@ const PageSlot = memo(function PageSlot(props: {
     // A page that already shows a bitmap keeps it (stretched by CSS) while the zoom is
     // still changing, and re-renders once the scale has settled.
     if (shown.current === look) {
-      const t = setTimeout(run, RERENDER_DELAY_MS);
+      const timer = setTimeout(run, RERENDER_DELAY_MS);
       return () => {
-        clearTimeout(t);
+        clearTimeout(timer);
         scheduler.cancel(key);
       };
     }
@@ -116,7 +117,7 @@ const PageSlot = memo(function PageSlot(props: {
     >
       <canvas ref={canvasRef} className="block size-full" />
       {failed && (
-        <div className="absolute inset-0 grid place-items-center text-sm text-destructive">{ko.pageFailed}</div>
+        <div className="absolute inset-0 grid place-items-center text-sm text-destructive">{t.pageFailed}</div>
       )}
     </div>
   );
