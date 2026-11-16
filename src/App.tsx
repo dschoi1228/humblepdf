@@ -1,6 +1,10 @@
 // App shell: toolbar, thumbnail panel, page view, password dialog and error toasts.
 import { useEffect, useRef } from "react";
-import { addFiles } from "./app/actions";
+import { addFiles, pickAndAddFiles } from "./app/actions";
+import { deleteTargets, rotateTargets } from "./app/pageActions";
+import { confirmDiscard, newDocument, save, saveAs } from "./app/save";
+import { shortcutFor, shortcutsBlocked, type ShortcutAction } from "./app/shortcuts";
+import { SavingDialog, UnsavedDialog } from "./components/SaveDialogs";
 import { backend, isBackendError } from "./backend";
 import { EmptyState } from "./components/EmptyState";
 import { PageView } from "./components/PageView";
@@ -9,7 +13,7 @@ import { ThumbnailPanel } from "./components/ThumbnailPanel";
 import { Toolbar } from "./components/Toolbar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useDocumentStore } from "./state/documentStore";
+import { isDirty, useDocumentStore } from "./state/documentStore";
 import { baseName } from "./state/model";
 import { useViewStore } from "./state/viewStore";
 import "./viewer/testHooks";
@@ -27,6 +31,32 @@ function waitForFirstRender(timeoutMs: number): Promise<void> {
   });
 }
 
+function runShortcut(action: ShortcutAction): void {
+  const doc = useDocumentStore.getState();
+  switch (action) {
+    case "delete":
+      return deleteTargets();
+    case "undo":
+      return doc.undo();
+    case "redo":
+      return doc.redo();
+    case "selectAll":
+      return doc.selectAll();
+    case "save":
+      return void save();
+    case "saveAs":
+      return void saveAs();
+    case "newDocument":
+      return void newDocument();
+    case "addFiles":
+      return void pickAndAddFiles();
+    case "rotateLeft":
+      return rotateTargets(-90);
+    case "rotateRight":
+      return rotateTargets(90);
+  }
+}
+
 export default function App() {
   const hasPages = useDocumentStore((s) => s.doc.pages.length > 0);
   const thumbnailsOpen = useViewStore((s) => s.thumbnailsOpen);
@@ -41,6 +71,23 @@ export default function App() {
         if (cancelled) u();
         else unlisten = u;
       });
+
+    // Unsaved changes are confirmed before the window closes (SPEC 6.1).
+    let unguard: (() => void) | undefined;
+    void backend
+      .onCloseRequested({ isDirty: () => isDirty(useDocumentStore.getState()), confirm: () => confirmDiscard("close") })
+      .then((u) => {
+        if (cancelled) u();
+        else unguard = u;
+      });
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const action = shortcutFor(e);
+      if (!action || shortcutsBlocked(e.target)) return;
+      e.preventDefault();
+      runShortcut(action);
+    };
+    window.addEventListener("keydown", onKeyDown);
 
     // StrictMode runs effects twice; the startup hooks must run once.
     if (!started.current) {
@@ -70,6 +117,8 @@ export default function App() {
     return () => {
       cancelled = true;
       unlisten?.();
+      unguard?.();
+      window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 
@@ -83,6 +132,8 @@ export default function App() {
         </main>
       </div>
       <PasswordDialog />
+      <SavingDialog />
+      <UnsavedDialog />
       <Toaster position="bottom-right" richColors closeButton />
     </TooltipProvider>
   );

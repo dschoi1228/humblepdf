@@ -2,8 +2,9 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import process from "node:process";
-import { createReadStream, existsSync, statSync } from "node:fs";
-import { join, normalize, resolve, sep } from "node:path";
+import { execFile } from "node:child_process";
+import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, normalize, resolve, sep } from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -40,9 +41,84 @@ function serveTestFiles(): Plugin {
   };
 }
 
+/**
+ * Dev-server only (D26): POST /__export {model, outPath, passwords} runs the CLI `export`
+ * so browser mode saves through the real core. Source paths under /__fixtures/ and
+ * /__out/ are mapped to files; the output must be under /__out/ or be one of the sources
+ * (which core refuses). Needs the debug CLI (built by `npm run e2e`).
+ */
+function exportRoute(): Plugin {
+  const mounts: Record<string, string> = {
+    "/__fixtures/": resolve("tests/fixtures"),
+    "/__out/": resolve("out"),
+  };
+  const toFile = (p: string): string | null => {
+    for (const [prefix, dir] of Object.entries(mounts)) {
+      if (!p.startsWith(prefix)) continue;
+      const file = normalize(join(dir, p.slice(prefix.length)));
+      return file.startsWith(dir + sep) ? file : null;
+    }
+    return null;
+  };
+  const cliExe = resolve("target", "debug", process.platform === "win32" ? "pdf-editor-cli.exe" : "pdf-editor-cli");
+  return {
+    name: "export-route",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__export", (req, res) => {
+        const reply = (status: number, body: unknown) => {
+          res.statusCode = status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(body));
+        };
+        if (req.method !== "POST") return reply(405, { code: "internal", message: "POST only" });
+        let text = "";
+        req.setEncoding("utf8");
+        req.on("data", (c: string) => (text += c));
+        req.on("end", () => {
+          type Body = {
+            model: { sources: { id: string; path: string }[] };
+            outPath: string;
+            passwords: Record<string, string>;
+          };
+          const body = JSON.parse(text) as Body;
+          const model = structuredClone(body.model);
+          for (const s of model.sources) {
+            const file = toFile(s.path);
+            if (!file) return reply(400, { code: "unsupported", message: `browser mode cannot export ${s.path}` });
+            s.path = file;
+          }
+          const isSource = body.model.sources.some((s) => s.path === body.outPath);
+          const out = toFile(body.outPath);
+          if (!out || (!isSource && !body.outPath.startsWith("/__out/"))) {
+            return reply(400, { code: "io", message: "browser mode saves under /__out/ only" });
+          }
+          if (!existsSync(cliExe)) return reply(500, { code: "internal", message: "run `cargo build -p pdf-editor-cli` first" });
+          const work = resolve("out", "e2e", "export");
+          mkdirSync(work, { recursive: true });
+          mkdirSync(dirname(out), { recursive: true });
+          const modelFile = join(work, `model-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+          writeFileSync(modelFile, JSON.stringify(model));
+          const args = ["export", "--model", modelFile, "--out", out];
+          for (const [id, pw] of Object.entries(body.passwords)) args.push("--password", `${id}=${pw}`);
+          execFile(cliExe, args, { encoding: "utf8" }, (err, stdout, stderr) => {
+            rmSync(modelFile, { force: true });
+            if (!err) return reply(200, JSON.parse(stdout));
+            try {
+              reply(400, JSON.parse(stderr));
+            } catch {
+              reply(500, { code: "internal", message: stderr || String(err) });
+            }
+          });
+        });
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), serveTestFiles()],
+  plugins: [react(), tailwindcss(), serveTestFiles(), exportRoute()],
   resolve: { alias: { "@": resolve("src") } },
   // Keep Rust errors visible when run by `tauri dev`.
   clearScreen: false,

@@ -7,6 +7,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use pdf_editor_core::error::{CoreError, ErrorPayload};
+use pdf_editor_core::export::{self, ExportContext, ExportSummary};
+use pdf_editor_core::model::Document;
 use pdf_editor_core::source::{self, SourceInfo};
 use serde::Serialize;
 use tauri::ipc::Response;
@@ -96,6 +98,29 @@ fn source_bytes(source_id: String, sources: State<'_, Sources>) -> Result<Respon
     Ok(Response::new(bytes))
 }
 
+/// Writes the model to a new PDF (SPEC 6.9). Runs off the main thread so the UI keeps
+/// drawing the progress indicator. Core refuses source paths and writes atomically.
+#[tauri::command]
+async fn export_document(
+    model: Document,
+    out_path: String,
+    passwords: HashMap<String, String>,
+) -> Result<ExportSummary, ErrorPayload> {
+    let job = move || {
+        let ctx = ExportContext {
+            passwords,
+            ..Default::default()
+        };
+        guarded(|| export::export_to_file(&model, &ctx, &PathBuf::from(&out_path)))
+    };
+    tauri::async_runtime::spawn_blocking(job)
+        .await
+        .map_err(|_| ErrorPayload {
+            code: "internal",
+            message: "export task failed".into(),
+        })?
+}
+
 /// M0 measurement hook: when PDF_EDITOR_BENCH is set to a PDF path, the frontend opens it,
 /// reports the time to first page through `bench_report`, and the app exits.
 #[tauri::command]
@@ -124,6 +149,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_source,
             source_bytes,
+            export_document,
             bench_config,
             bench_report
         ])

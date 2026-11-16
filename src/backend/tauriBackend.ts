@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import type { ExportSummary } from "../bindings/ExportSummary";
 import { baseName } from "../state/model";
 import { ko } from "../strings/ko";
 import type { Backend, OpenedSource, PickedFile } from "./types";
@@ -33,6 +35,21 @@ export const tauriBackend: Backend = {
     });
     if (r === null) return null;
     return toPicked(Array.isArray(r) ? r : [r]);
+  },
+
+  pickSavePath(defaultPath) {
+    return save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
+  },
+
+  exportDocument(model, outPath, passwords) {
+    return invoke<ExportSummary>("export_document", { model, outPath, passwords });
+  },
+
+  async onCloseRequested(guard) {
+    // Tauri destroys the window after the handler unless preventDefault() was called.
+    return getCurrentWindow().onCloseRequested(async (event) => {
+      if (guard.isDirty() && !(await guard.confirm())) event.preventDefault();
+    });
   },
 
   benchConfig() {

@@ -1,3 +1,5 @@
+import type { Document } from "../bindings/Document";
+import type { ExportSummary } from "../bindings/ExportSummary";
 import type { SourceInfo } from "../bindings/SourceInfo";
 
 export type OpenedSource = {
@@ -31,6 +33,18 @@ export interface Backend {
   onFileDrop(cb: (files: PickedFile[]) => void): Promise<() => void>;
   /** Shows the open-file dialog. Returns null when cancelled. */
   pickFiles(): Promise<PickedFile[] | null>;
+  /** Shows the save dialog (PDF filter). Returns null when cancelled. */
+  pickSavePath(defaultPath: string): Promise<string | null>;
+  /**
+   * Writes the model to a new PDF (SPEC 6.9). Passwords of encrypted sources go by source id
+   * and stay in memory. Rejects with `output_is_source` for a source path.
+   */
+  exportDocument(model: Document, outPath: string, passwords: Record<string, string>): Promise<ExportSummary>;
+  /**
+   * Guards closing the window: when `isDirty()` is true the close waits for `confirm()` and
+   * is cancelled when it resolves false. Returns an unsubscribe function.
+   */
+  onCloseRequested(guard: { isDirty: () => boolean; confirm: () => Promise<boolean> }): Promise<() => void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */
   benchConfig(): Promise<string | null>;
   benchReport(report: string): Promise<void>;

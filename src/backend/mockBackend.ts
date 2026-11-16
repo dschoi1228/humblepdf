@@ -4,10 +4,14 @@
 // - Image layout is computed only by the core (SPEC 6.1). The mock reads the core's
 //   result from /__out/e2e/info/<file name>.json (written by the E2E setup with the
 //   CLI); without it, images are reported as unsupported.
+// - Saving posts the model to the dev-server route /__export, which runs the CLI (D26).
+//   The save "dialog" is window.prompt; outputs go under /__out/.
+import type { ExportSummary } from "../bindings/ExportSummary";
 import type { PageInfo } from "../bindings/PageInfo";
 import type { Rotation } from "../bindings/Rotation";
 import type { SourceInfo } from "../bindings/SourceInfo";
 import { baseName } from "../state/model";
+import { ko } from "../strings/ko";
 import { openPdf } from "../viewer/pdfjs";
 import type { Backend, BackendError, OpenedSource, PickedFile } from "./types";
 
@@ -125,6 +129,31 @@ export const mockBackend: Backend = {
   },
 
   pickFiles: pickWithInput,
+
+  async pickSavePath(defaultPath) {
+    // Never suggest writing into the fixtures folder.
+    const suggested = defaultPath.startsWith("/__fixtures/") ? `/__out/saved/${baseName(defaultPath)}` : defaultPath;
+    return window.prompt(ko.save.title, suggested);
+  },
+
+  async exportDocument(model, outPath, passwords) {
+    const res = await fetch("/__export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, outPath, passwords }),
+    });
+    const body = (await res.json()) as unknown;
+    if (!res.ok) throw body as BackendError;
+    return body as ExportSummary;
+  },
+
+  async onCloseRequested(guard) {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (guard.isDirty()) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  },
 
   async benchConfig() {
     return new URLSearchParams(window.location.search).get("bench");
