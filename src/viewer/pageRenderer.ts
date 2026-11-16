@@ -12,6 +12,14 @@ export class RenderAborted extends Error {
   }
 }
 
+/**
+ * What a rendered bitmap of `page` depends on besides the scale: rotation and image fit.
+ * Bitmap caches compare it so a rotated page never shows its old picture.
+ */
+export function renderLook(page: Page): string {
+  return `${displayRotation(page.baseRotation, page.userRotation)}:${page.imageFit ?? "-"}`;
+}
+
 function checkAborted(signal: AbortSignal) {
   if (signal.aborted) throw new RenderAborted();
 }

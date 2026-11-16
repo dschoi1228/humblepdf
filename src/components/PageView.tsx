@@ -2,7 +2,6 @@
 // and rendered; renders for pages that leave are cancelled.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Page } from "../bindings/Page";
-import { displayRotation } from "../coords";
 import { useDocumentStore } from "../state/documentStore";
 import type { SourceMeta } from "../state/model";
 import { useViewStore } from "../state/viewStore";
@@ -18,7 +17,7 @@ import {
   visibleRange,
   type Layout,
 } from "../viewer/layout";
-import { renderPageCanvas } from "../viewer/pageRenderer";
+import { renderLook, renderPageCanvas } from "../viewer/pageRenderer";
 import { PRIORITY, scheduler } from "../viewer/renderScheduler";
 import { markMainRendered } from "../viewer/testHooks";
 import { getPageBitmap, putPageBitmap } from "../viewer/pageBitmapCache";
@@ -45,26 +44,32 @@ const PageSlot = memo(function PageSlot(props: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
   const key = `main:${page.id}`;
-  const rotation = displayRotation(page.baseRotation, page.userRotation);
+  const look = renderLook(page);
 
-  /** Whether the canvas shows a bitmap (at any scale); also exposed for tests. */
-  const hasPixels = useRef(false);
-  const show = useCallback((c: HTMLCanvasElement) => {
+  /** Look of the bitmap on the canvas (at any scale), or null when blank. */
+  const shown = useRef<string | null>(null);
+  const show = useCallback((c: HTMLCanvasElement, l: string) => {
     const target = canvasRef.current;
     if (!target) return;
     target.width = c.width;
     target.height = c.height;
     target.getContext("2d")!.drawImage(c, 0, 0);
-    hasPixels.current = true;
+    shown.current = l;
     target.dataset.hasPixels = "1";
   }, []);
 
-  // A remounted page shows its last bitmap before the first paint (no blank flash).
+  // Before the first paint: a remounted page shows its last bitmap (no blank flash), and a
+  // rotated page or one with another fit drops its old picture instead of stretching it.
   useLayoutEffect(() => {
-    if (hasPixels.current) return;
-    const cached = getPageBitmap(page.id, rotation);
-    if (cached) show(cached);
-  }, [page.id, rotation, show]);
+    if (shown.current === look) return;
+    const cached = getPageBitmap(page.id, look);
+    if (cached) show(cached, look);
+    else if (shown.current !== null && canvasRef.current) {
+      canvasRef.current.width = 0;
+      shown.current = null;
+      delete canvasRef.current.dataset.hasPixels;
+    }
+  }, [page.id, look, show]);
 
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
@@ -78,14 +83,14 @@ const PageSlot = memo(function PageSlot(props: {
           throw e;
         }
         if (signal.aborted || !canvasRef.current) return;
-        show(c);
-        putPageBitmap(page.id, rotation, c);
+        show(c, look);
+        putPageBitmap(page.id, look, c);
         setFailed(false);
         markMainRendered(page.id, true);
       });
     // A page that already shows a bitmap keeps it (stretched by CSS) while the zoom is
     // still changing, and re-renders once the scale has settled.
-    if (hasPixels.current) {
+    if (shown.current === look) {
       const t = setTimeout(run, RERENDER_DELAY_MS);
       return () => {
         clearTimeout(t);
@@ -96,7 +101,7 @@ const PageSlot = memo(function PageSlot(props: {
     return () => scheduler.cancel(key);
     // `priority` changes are handled below without re-rendering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, page, meta, scale, rotation, show]);
+  }, [key, page, meta, scale, look, show]);
 
   useEffect(() => scheduler.reprioritize(key, priority), [key, priority]);
   useEffect(() => () => markMainRendered(page.id, false), [page.id]);

@@ -2,13 +2,12 @@
 // rotation, rendered after the main view (lower priority). Click to go to a page.
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Page } from "../bindings/Page";
-import { displayRotation } from "../coords";
 import { useDocumentStore } from "../state/documentStore";
 import type { SourceMeta } from "../state/model";
 import { useViewStore } from "../state/viewStore";
 import { ko } from "../strings/ko";
 import { computeLayout, pageDisplaySize, visibleRange } from "../viewer/layout";
-import { renderPageCanvas } from "../viewer/pageRenderer";
+import { renderLook, renderPageCanvas } from "../viewer/pageRenderer";
 import { PRIORITY, scheduler } from "../viewer/renderScheduler";
 
 const THUMB_WIDTH = 120;
@@ -32,7 +31,7 @@ const Thumb = memo(function Thumb(props: {
 }) {
   const { page, meta } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const cacheKey = `${page.id}:${displayRotation(page.baseRotation, page.userRotation)}`;
+  const cacheKey = `${page.id}:${renderLook(page)}`;
   const jobKey = `thumb:${cacheKey}`;
 
   useEffect(() => {
