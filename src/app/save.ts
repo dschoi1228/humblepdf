@@ -2,38 +2,15 @@
 // module picks the path, shows progress and reports the result.
 import { toast } from "sonner";
 import { create } from "zustand";
-import type { Document } from "../bindings/Document";
 import { backend, isBackendError } from "../backend";
 import { isDirty, useDocumentStore } from "../state/documentStore";
-import { exportModel, type SourceMeta } from "../state/model";
+import { exportModel } from "../state/model";
 import { useViewStore } from "../state/viewStore";
 import { errorMessage, ko } from "../strings/ko";
 import { clearThumbnails } from "../viewer/thumbCache";
 import { clearPageBitmaps } from "../viewer/pageBitmapCache";
 import { clearSources } from "../viewer/sourceCache";
-
-/** `<first source name>_편집.pdf` next to the first source of the page list (SPEC 6.9). */
-export function defaultSavePath(doc: Document, sources: Record<string, SourceMeta>): string {
-  const first = doc.pages[0] ? sources[doc.pages[0].sourceId] : undefined;
-  const path = first?.path ?? "";
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  const dir = cut >= 0 ? path.slice(0, cut + 1) : "";
-  const name = first?.name ?? "document";
-  const dot = name.lastIndexOf(".");
-  const stem = dot > 0 ? name.slice(0, dot) : name;
-  return `${dir}${stem}${ko.save.defaultSuffix}.pdf`;
-}
-
-/** Adds `.pdf` when the chosen name has no PDF extension. */
-export function withPdfExtension(path: string): string {
-  return /\.pdf$/i.test(path) ? path : `${path}.pdf`;
-}
-
-export function formatBytes(n: number): string {
-  if (n < 1024) return `${n}B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)}MB`;
-}
+import { defaultSavePath, formatBytes, withPdfExtension } from "./savePath";
 
 /** Progress indicator state (the saving dialog reads it). */
 export const useSaveStatus = create<{ saving: boolean }>(() => ({ saving: false }));

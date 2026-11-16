@@ -20,7 +20,9 @@ import {
 export function PageContextMenu(props: { children: ReactNode }) {
   const [images, setImages] = useState<{ count: number; fit: ImageFit | null }>({ count: 0, fit: null });
   return (
-    <ContextMenu onOpenChange={(open) => open && setImages(imageTargets())}>
+    // Non-modal: a modal menu hides the app with aria-hidden while the clicked thumbnail
+    // still has focus (browser warning).
+    <ContextMenu modal={false} onOpenChange={(open) => open && setImages(imageTargets())}>
       <ContextMenuTrigger asChild>{props.children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52" data-testid="page-menu">
         <ContextMenuItem onSelect={() => rotateTargets(-90)}>
