@@ -90,3 +90,25 @@ export function toUser(t: PageTransform, p: Point): Point {
 export function cssMatrix(m: Matrix): string {
   return `matrix(${m.join(" ")})`;
 }
+
+/** A screen-pixel displacement as a user-space displacement (no translation). */
+export function deltaToUser(t: PageTransform, dx: number, dy: number): Point {
+  const m = invert(t.matrix);
+  return { x: m[0] * dx + m[2] * dy, y: m[1] * dx + m[3] * dy };
+}
+
+/** Unit user-space vectors that point right and down on screen. */
+export function screenAxes(t: PageTransform): { right: Point; down: Point } {
+  const unit = (p: Point) => {
+    const len = Math.hypot(p.x, p.y);
+    return { x: p.x / len, y: p.y / len };
+  };
+  return { right: unit(deltaToUser(t, 1, 0)), down: unit(deltaToUser(t, 0, 1)) };
+}
+
+/** Screen-pixel rectangle covering a user-space rectangle. */
+export function rectToScreen(t: PageTransform, r: Rect): Rect {
+  const a = apply(t.matrix, { x: r.x0, y: r.y0 });
+  const b = apply(t.matrix, { x: r.x1, y: r.y1 });
+  return { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+}

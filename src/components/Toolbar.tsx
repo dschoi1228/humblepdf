@@ -17,46 +17,17 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { pickAndAddFiles } from "../app/actions";
 import { deleteTargets, rotateTargets, setFitOfTargets } from "../app/pageActions";
 import { newDocument, save, saveAs } from "../app/save";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDocumentStore } from "../state/documentStore";
+import { Divider, IconButton } from "./IconButton";
 import { useViewStore } from "../state/viewStore";
 import { LOCALE_NAMES, LOCALES, useLocaleStore, useStrings, type Locale } from "../i18n";
 import { MAX_SCALE, MIN_SCALE } from "../viewer/layout";
-
-function IconButton(props: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  pressed?: boolean;
-  children: ReactNode;
-  testId?: string;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={props.pressed ? "secondary" : "ghost"}
-          size="icon"
-          aria-label={props.label}
-          aria-pressed={props.pressed}
-          disabled={props.disabled}
-          onClick={props.onClick}
-          data-testid={props.testId}
-        >
-          {props.children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{props.label}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 function PageNumberInput() {
   const t = useStrings();
@@ -95,7 +66,6 @@ function PageNumberInput() {
   );
 }
 
-const Divider = () => <Separator orientation="vertical" className="mx-1 !h-6" />;
 
 /** UI language picker (D27). Language names are shown in their own language. */
 function LanguagePicker() {

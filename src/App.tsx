@@ -2,6 +2,9 @@
 import { useEffect, useRef } from "react";
 import { addFiles, pickAndAddFiles } from "./app/actions";
 import { deleteTargets, rotateTargets } from "./app/pageActions";
+import { deleteSelectedObject, nudgeSelectedObject } from "./app/objectActions";
+import { useEditorStore } from "./editor/editorStore";
+import { EditBar } from "./components/EditBar";
 import { confirmDiscard, newDocument, save, saveAs } from "./app/save";
 import { shortcutFor, shortcutsBlocked, type ShortcutAction } from "./app/shortcuts";
 import { SavingDialog, UnsavedDialog } from "./components/SaveDialogs";
@@ -32,29 +35,55 @@ function waitForFirstRender(timeoutMs: number): Promise<void> {
   });
 }
 
-function runShortcut(action: ShortcutAction): void {
+/** Runs a shortcut; false when it does nothing here, so the key keeps its default. */
+function runShortcut(action: ShortcutAction): boolean {
   const doc = useDocumentStore.getState();
+  const editor = useEditorStore.getState();
+  if (typeof action === "object") {
+    if (action.kind === "tool") {
+      if (!doc.doc.pages.length) return false;
+      editor.setTool(action.tool);
+      return true;
+    }
+    return nudgeSelectedObject(action.dx, action.dy);
+  }
   switch (action) {
     case "delete":
-      return deleteTargets();
+      // The selected object goes first; otherwise the selected pages (SPEC 6.4).
+      if (!deleteSelectedObject()) deleteTargets();
+      return true;
+    case "escape":
+      if (editor.tool !== "select") editor.setTool("select");
+      else if (editor.selected) editor.select(null);
+      else return false;
+      return true;
     case "undo":
-      return doc.undo();
+      doc.undo();
+      return true;
     case "redo":
-      return doc.redo();
+      doc.redo();
+      return true;
     case "selectAll":
-      return doc.selectAll();
+      doc.selectAll();
+      return true;
     case "save":
-      return void save();
+      void save();
+      return true;
     case "saveAs":
-      return void saveAs();
+      void saveAs();
+      return true;
     case "newDocument":
-      return void newDocument();
+      void newDocument();
+      return true;
     case "addFiles":
-      return void pickAndAddFiles();
+      void pickAndAddFiles();
+      return true;
     case "rotateLeft":
-      return rotateTargets(-90);
+      rotateTargets(-90);
+      return true;
     case "rotateRight":
-      return rotateTargets(90);
+      rotateTargets(90);
+      return true;
   }
 }
 
@@ -92,8 +121,7 @@ export default function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       const action = shortcutFor(e);
       if (!action || shortcutsBlocked(e.target)) return;
-      e.preventDefault();
-      runShortcut(action);
+      if (runShortcut(action)) e.preventDefault();
     };
     window.addEventListener("keydown", onKeyDown);
 
@@ -134,6 +162,7 @@ export default function App() {
     <TooltipProvider delayDuration={400}>
       <div className="flex h-screen flex-col overflow-hidden">
         <Toolbar />
+        <EditBar />
         <main className="flex min-h-0 flex-1">
           {hasPages && thumbnailsOpen && <ThumbnailPanel />}
           <div className="min-w-0 flex-1">{hasPages ? <PageView /> : <EmptyState />}</div>

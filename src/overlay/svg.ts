@@ -1,7 +1,7 @@
-// M0 overlay renderer: draws page objects as SVG in page user space, wrapped in one group
-// whose transform is the page transform from the coords module. Geometry follows the same
-// SPEC numbers as the core (src/shapes). This is the verification renderer for M0-5, not
-// the interactive editor overlay of M3.
+// Object renderer: draws page objects as SVG in page user space, inside a group whose
+// transform is the page transform from the coords module. Geometry follows the same SPEC
+// numbers as the core (src/shapes). Used by the M0-5 screen-match measurement and by the
+// editor overlay (D28), so the screen has one drawing code path.
 import type { PageObject } from "../bindings/PageObject";
 import type { Rgb } from "./types";
 import { cssMatrix, type PageTransform } from "../coords";
@@ -21,7 +21,8 @@ const color = (c: Rgb) => `rgb(${c.map((v) => Math.round(v * 255)).join(",")})`;
 const num = (v: number) => String(Math.round(v * 10000) / 10000);
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function objectSvg(o: PageObject, assets: OverlayAssets): string {
+/** One object as SVG markup in user space (the inside of the page-transform group). */
+export function objectSvg(o: PageObject, assets: OverlayAssets): string {
   switch (o.type) {
     case "highlight": {
       const polys = o.quads

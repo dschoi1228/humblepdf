@@ -15,6 +15,8 @@ import { PRIORITY, scheduler } from "../viewer/renderScheduler";
 import { thumbCache } from "../viewer/thumbCache";
 import { autoScrollStep, DRAG_THRESHOLD, dropIndex, dropLineY } from "../viewer/thumbDrag";
 import { PageContextMenu } from "./PageContextMenu";
+import { ObjectsView } from "./ObjectLayer";
+import { displayRotation, viewportTransform } from "../coords";
 
 const THUMB_WIDTH = 120;
 const LABEL_SPACE = 28;
@@ -42,6 +44,15 @@ const Thumb = memo(function Thumb(props: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheKey = `${page.id}:${renderLook(page)}`;
   const jobKey = `thumb:${cacheKey}`;
+  const transform = useMemo(
+    () =>
+      viewportTransform(
+        page.box,
+        displayRotation(page.baseRotation, page.userRotation),
+        props.width / pageDisplaySize(page).w,
+      ),
+    [page, props.width],
+  );
 
   useEffect(() => {
     const draw = (c: HTMLCanvasElement) => {
@@ -87,10 +98,11 @@ const Thumb = memo(function Thumb(props: {
       data-testid="thumbnail"
     >
       <span
-        className={"block bg-white shadow-sm ring-offset-2 ring-offset-neutral-100 " + ring}
+        className={"relative block bg-white shadow-sm ring-offset-2 ring-offset-neutral-100 " + ring}
         style={{ width: props.width, height: props.height }}
       >
         <canvas ref={canvasRef} className="block size-full" />
+        <ObjectsView objects={page.objects} transform={transform} />
       </span>
       <span className={"mt-1 block text-xs " + (props.selected ? "font-semibold text-blue-700" : "text-neutral-600")}>
         {t.thumbnails.page(index + 1)}

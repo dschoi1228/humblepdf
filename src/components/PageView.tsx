@@ -6,6 +6,8 @@ import { useDocumentStore } from "../state/documentStore";
 import type { SourceMeta } from "../state/model";
 import { useViewStore } from "../state/viewStore";
 import { useStrings } from "../i18n";
+import { displayRotation, viewportTransform } from "../coords";
+import { ObjectLayer } from "./ObjectLayer";
 import {
   computeLayout,
   currentPageAt,
@@ -46,6 +48,17 @@ const PageSlot = memo(function PageSlot(props: {
   const [failed, setFailed] = useState(false);
   const key = `main:${page.id}`;
   const look = renderLook(page);
+  // Object edits change `page` but not its pixels: the render effect reads the latest page
+  // from a ref and runs only when the source page, its look or the scale changes.
+  const pageRef = useRef(page);
+  useLayoutEffect(() => {
+    pageRef.current = page;
+  });
+  const sourcePage = `${page.sourceId}#${page.pageIndex}`;
+  const transform = useMemo(
+    () => viewportTransform(page.box, displayRotation(page.baseRotation, page.userRotation), scale),
+    [page.box, page.baseRotation, page.userRotation, scale],
+  );
 
   /** Look of the bitmap on the canvas (at any scale), or null when blank. */
   const shown = useRef<string | null>(null);
@@ -78,7 +91,7 @@ const PageSlot = memo(function PageSlot(props: {
       scheduler.schedule(key, priority, async (signal) => {
         let c: HTMLCanvasElement;
         try {
-          c = await renderPageCanvas(page, meta, scale, dpr, signal);
+          c = await renderPageCanvas(pageRef.current, meta, scale, dpr, signal);
         } catch (e) {
           if (!signal.aborted && (e as Error)?.name !== "RenderAborted") setFailed(true);
           throw e;
@@ -102,7 +115,7 @@ const PageSlot = memo(function PageSlot(props: {
     return () => scheduler.cancel(key);
     // `priority` changes are handled below without re-rendering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, page, meta, scale, look, show]);
+  }, [key, sourcePage, meta, scale, look, show]);
 
   useEffect(() => scheduler.reprioritize(key, priority), [key, priority]);
   useEffect(() => () => markMainRendered(page.id, false), [page.id]);
@@ -116,6 +129,7 @@ const PageSlot = memo(function PageSlot(props: {
       data-testid="page"
     >
       <canvas ref={canvasRef} className="block size-full" />
+      <ObjectLayer page={page} transform={transform} />
       {failed && (
         <div className="absolute inset-0 grid place-items-center text-sm text-destructive">{t.pageFailed}</div>
       )}

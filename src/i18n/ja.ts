@@ -78,6 +78,38 @@ export const ja: Strings = {
     cancel: "キャンセル",
   },
 
+  editor: {
+    label: "編集ツール",
+    tools: {
+      select: "選択",
+      highlight: "ハイライト",
+      rect: "四角形",
+      ellipse: "楕円",
+      line: "直線",
+      arrow: "矢印",
+    },
+    color: "色",
+    stroke: "線の色",
+    fill: "塗りつぶし",
+    none: "なし",
+    strokeWidth: "線の太さ",
+    opacity: "不透明度",
+    deleteObject: "オブジェクトを削除",
+    hint: "オブジェクトをクリックすると選択できます。ツールを選んでページ上でドラッグすると作成できます。",
+    colors: {
+      black: "黒",
+      red: "赤",
+      orange: "オレンジ",
+      yellow: "黄",
+      green: "緑",
+      blue: "青",
+      purple: "紫",
+      white: "白",
+      pink: "ピンク",
+      sky: "水色",
+    },
+  },
+
   addFailed: (name: string) => `「${name}」を追加できませんでした。`,
   pageFailed: "このページを表示できませんでした。",
 

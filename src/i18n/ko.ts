@@ -76,6 +76,38 @@ export const ko = {
     cancel: "취소",
   },
 
+  editor: {
+    label: "편집 도구",
+    tools: {
+      select: "선택",
+      highlight: "하이라이트",
+      rect: "사각형",
+      ellipse: "타원",
+      line: "직선",
+      arrow: "화살표",
+    },
+    color: "색",
+    stroke: "선 색",
+    fill: "채움",
+    none: "없음",
+    strokeWidth: "선 두께",
+    opacity: "불투명도",
+    deleteObject: "객체 삭제",
+    hint: "객체를 클릭하면 선택됩니다. 도구를 골라 페이지 위에서 끌면 객체를 만듭니다.",
+    colors: {
+      black: "검정",
+      red: "빨강",
+      orange: "주황",
+      yellow: "노랑",
+      green: "초록",
+      blue: "파랑",
+      purple: "보라",
+      white: "흰색",
+      pink: "분홍",
+      sky: "하늘",
+    },
+  },
+
   addFailed: (name: string) => `"${name}" 파일을 추가하지 못했습니다.`,
   pageFailed: "이 페이지를 표시하지 못했습니다.",
 

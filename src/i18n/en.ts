@@ -77,6 +77,38 @@ export const en: Strings = {
     cancel: "Cancel",
   },
 
+  editor: {
+    label: "Editing tools",
+    tools: {
+      select: "Select",
+      highlight: "Highlight",
+      rect: "Rectangle",
+      ellipse: "Ellipse",
+      line: "Line",
+      arrow: "Arrow",
+    },
+    color: "Color",
+    stroke: "Stroke",
+    fill: "Fill",
+    none: "None",
+    strokeWidth: "Stroke width",
+    opacity: "Opacity",
+    deleteObject: "Delete object",
+    hint: "Click an object to select it. Pick a tool and drag on a page to draw.",
+    colors: {
+      black: "Black",
+      red: "Red",
+      orange: "Orange",
+      yellow: "Yellow",
+      green: "Green",
+      blue: "Blue",
+      purple: "Purple",
+      white: "White",
+      pink: "Pink",
+      sky: "Sky blue",
+    },
+  },
+
   addFailed: (name: string) => `Could not add "${name}".`,
   pageFailed: "Could not display this page.",
 
