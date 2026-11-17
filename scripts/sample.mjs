@@ -3,6 +3,8 @@
 //   rectangle, ellipse, arrows, baked signature; one rotated page)
 // - out/m2_sample.pdf: two PDFs, an encrypted PDF and two images, reordered, with pages
 //   deleted, all four rotations and both image fits (M2)
+// - out/m3_sample.pdf: highlights in the four colors over Korean text, and rectangles,
+//   ellipses, lines and arrows on pages rotated 0/90/180/270 (M3)
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 
@@ -59,6 +61,41 @@ cli([
   "--password", `${src["encrypted_aes256.pdf"]}=${PASSWORD}`,
 ]);
 
+// M3: objects as the editor makes them (ids are unique in the document).
+const m3 = cli(["model", "tests/fixtures/korean_embedded.pdf", "tests/fixtures/rotated.pdf"], true);
+m3.pages = m3.pages.filter((p) => p.sourceId === m3.sources[0].id || p.pageIndex < 4);
+const HIGHLIGHT = { yellow: [1, 0.92, 0.23], green: [0.56, 0.93, 0.56], pink: [1, 0.6, 0.8], sky: [0.53, 0.81, 0.98] };
+const RED = [0.898, 0.224, 0.208];
+const BLUE = [0.118, 0.533, 0.898];
+const GREEN = [0.263, 0.627, 0.278];
+let next = 0;
+const id = (kind) => `${kind}-${++next}`;
+const quad = (b, x0, y0, x1, y1) => [
+  [{ x: b.x0 + x0, y: b.y0 + y1 }, { x: b.x0 + x1, y: b.y0 + y1 }, { x: b.x0 + x0, y: b.y0 + y0 }, { x: b.x0 + x1, y: b.y0 + y0 }],
+];
+{
+  // korean_embedded.pdf: the three text lines and one blank area.
+  const b = m3.pages[0].box;
+  const rows = [[760, 786], [712, 738], [664, 690], [600, 626]];
+  m3.pages[0].objects = Object.entries(HIGHLIGHT).map(([, color], i) => ({
+    type: "highlight", id: id("highlight"), quads: quad(b, 48, rows[i][0], 330, rows[i][1]), color, opacity: 0.4,
+  }));
+}
+for (const p of m3.pages.slice(1)) {
+  const b = p.box;
+  const R = (x0, y0, x1, y1) => ({ x0: b.x0 + x0, y0: b.y0 + y0, x1: b.x0 + x1, y1: b.y0 + y1 });
+  const P = (x, y) => ({ x: b.x0 + x, y: b.y0 + y });
+  p.objects = [
+    { type: "highlight", id: id("highlight"), quads: quad(b, 60, 250, 260, 275), color: HIGHLIGHT.yellow, opacity: 0.4 },
+    { type: "rect", id: id("rect"), rect: R(80, 150, 230, 230), stroke: RED, strokeWidth: 4, fill: null, opacity: 1 },
+    { type: "ellipse", id: id("ellipse"), rect: R(250, 120, 400, 220), stroke: RED, strokeWidth: 2, fill: GREEN, opacity: 0.7 },
+    { type: "line", id: id("line"), from: P(70, 330), to: P(330, 330), stroke: BLUE, strokeWidth: 1, arrow: false, opacity: 1 },
+    { type: "line", id: id("arrow"), from: P(70, 60), to: P(330, 100), stroke: RED, strokeWidth: 3, arrow: true, opacity: 1 },
+  ];
+}
+writeFileSync("out/m3_sample.model.json", JSON.stringify(m3, null, 2));
+cli(["export", "--model", "out/m3_sample.model.json", "--out", "out/m3_sample.pdf"]);
+
 const order = model.pages
   .map((p, i) => {
     const name = Object.keys(src).find((k) => src[k] === p.sourceId);
@@ -84,4 +121,14 @@ ${order}
   2. Every page looks the same in all three viewers (orientation, size, no clipping).
   3. The photo and alpha.png keep their proportions; alpha.png's page has the image's
      proportions, the photo's page is A4.
+
+out/m3_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
+  1. Page 1: four highlights (yellow, green, pink, sky blue); the Korean text under them
+     is easy to read.
+  2. Pages 2-5 (rotated 0, 90, 180, 270): a yellow highlight, a red rectangle, a green
+     ellipse with a red outline, a blue line and a red arrow, placed the same way relative
+     to the page's own "rotate N" label on every page and in every viewer.
+  3. In Acrobat Reader and Edge: each object is an annotation (comment) that can be
+     selected, moved and deleted. Undo there restores it.
+  4. Chrome shows the same picture (it may not let you edit annotations).
 `);
