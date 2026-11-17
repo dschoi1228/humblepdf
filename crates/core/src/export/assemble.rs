@@ -134,7 +134,78 @@ fn validate(model: &model::Document) -> Result<HashMap<&str, SourceKind>> {
             )));
         }
     }
+    validate_objects(model)?;
     Ok(kinds)
+}
+
+/// Object values the export relies on (M3). The editor never makes other values; this
+/// guards models from other writers, such as the CLI's JSON input.
+fn validate_objects(model: &model::Document) -> Result<()> {
+    use crate::shape_spec::{MAX_STROKE_WIDTH, MIN_STROKE_WIDTH};
+    use model::PageObject as O;
+    let bad = |id: &str, what: &str| CoreError::InvalidModel(format!("object {id}: {what}"));
+    let finite = |vs: &[f64]| vs.iter().all(|v| v.is_finite());
+    let unit = |v: f64| (0.0..=1.0).contains(&v);
+    let color_ok = |c: &model::Rgb| c.iter().all(|v| unit(*v));
+    let width_ok = |w: f64| (MIN_STROKE_WIDTH..=MAX_STROKE_WIDTH).contains(&w);
+    let rect_ok = |r: &Rect| finite(&[r.x0, r.y0, r.x1, r.y1]) && r.x0 < r.x1 && r.y0 < r.y1;
+
+    let mut ids = HashSet::new();
+    for o in model.pages.iter().flat_map(|p| &p.objects) {
+        let id = o.id();
+        if !ids.insert(id) {
+            return Err(bad(id, "duplicate id"));
+        }
+        match o {
+            O::Highlight(h) => {
+                if h.quads.is_empty() {
+                    return Err(bad(id, "highlight without quads"));
+                }
+                if !h.quads.iter().flatten().all(|p| finite(&[p.x, p.y])) {
+                    return Err(bad(id, "non-finite coordinate"));
+                }
+                if !unit(h.opacity) || !color_ok(&h.color) {
+                    return Err(bad(id, "opacity or color out of range"));
+                }
+            }
+            O::Rect(s) | O::Ellipse(s) => {
+                if !rect_ok(&s.rect) {
+                    return Err(bad(id, "invalid rect"));
+                }
+                if s.stroke.is_none() && s.fill.is_none() {
+                    return Err(bad(id, "shape without stroke and fill"));
+                }
+                if s.stroke.is_some() && !width_ok(s.stroke_width) {
+                    return Err(bad(id, "stroke width out of range"));
+                }
+                if !unit(s.opacity) || !s.stroke.iter().chain(s.fill.iter()).all(color_ok) {
+                    return Err(bad(id, "opacity or color out of range"));
+                }
+            }
+            O::Line(l) => {
+                if !finite(&[l.from.x, l.from.y, l.to.x, l.to.y]) {
+                    return Err(bad(id, "non-finite coordinate"));
+                }
+                if !width_ok(l.stroke_width) {
+                    return Err(bad(id, "stroke width out of range"));
+                }
+                if !unit(l.opacity) || !color_ok(&l.stroke) {
+                    return Err(bad(id, "opacity or color out of range"));
+                }
+            }
+            O::Text(t) => {
+                if !finite(&[t.origin.x, t.origin.y, t.font_size]) || t.font_size <= 0.0 {
+                    return Err(bad(id, "invalid origin or font size"));
+                }
+            }
+            O::Signature(g) => {
+                if !rect_ok(&g.rect) {
+                    return Err(bad(id, "invalid rect"));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Builds the output document (pages only; objects are added afterwards).

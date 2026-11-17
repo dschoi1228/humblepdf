@@ -43,8 +43,6 @@ export const PALETTE: Record<PaletteColor, Rgb> = {
 };
 
 export const STROKE_WIDTHS: readonly number[] = [0.5, 1, 2, 3, 4, 6, 8, 12];
-export const MIN_STROKE_WIDTH = 0.5;
-export const MAX_STROKE_WIDTH = 12;
 /** 10% .. 100% in 10% steps. */
 export const OPACITIES: readonly number[] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 

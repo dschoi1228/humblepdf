@@ -8,6 +8,9 @@ pub const ARROW_LENGTH_PER_WIDTH: f64 = 4.0;
 pub const ARROW_BASE_RATIO: f64 = 0.6;
 /// Text line spacing as a multiple of the font size.
 pub const LINE_HEIGHT: f64 = 1.3;
+/// Stroke width range of shapes and lines, in pt (SPEC 6.6).
+pub const MIN_STROKE_WIDTH: f64 = 0.5;
+pub const MAX_STROKE_WIDTH: f64 = 12.0;
 /// Bezier constant for a quarter ellipse.
 pub const ELLIPSE_KAPPA: f64 = 0.552_284_749_830_793_6;
 

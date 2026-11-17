@@ -28,4 +28,6 @@ fn frontend_constants_match_core() {
     assert_eq!(value("ARROW_BASE_RATIO"), ARROW_BASE_RATIO);
     assert_eq!(value("LINE_HEIGHT"), LINE_HEIGHT);
     assert_eq!(value("ELLIPSE_KAPPA"), ELLIPSE_KAPPA);
+    assert_eq!(value("MIN_STROKE_WIDTH"), MIN_STROKE_WIDTH);
+    assert_eq!(value("MAX_STROKE_WIDTH"), MAX_STROKE_WIDTH);
 }
