@@ -30,7 +30,7 @@ async function toDataUrl(url: string, mime: string): Promise<string> {
   return `data:${mime};base64,${btoa(bin)}`;
 }
 
-async function renderToCanvas(url: string, pageNumber: number): Promise<HTMLCanvasElement> {
+export async function renderToCanvas(url: string, pageNumber: number): Promise<HTMLCanvasElement> {
   const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
   const doc = await openPdf(bytes);
   const canvas = document.createElement("canvas");
@@ -39,7 +39,7 @@ async function renderToCanvas(url: string, pageNumber: number): Promise<HTMLCanv
   return canvas;
 }
 
-function diffBox(a: HTMLCanvasElement, b: HTMLCanvasElement, threshold = 48): PixelBox | null {
+export function diffBox(a: HTMLCanvasElement, b: HTMLCanvasElement, threshold = 48): PixelBox | null {
   const w = Math.min(a.width, b.width);
   const h = Math.min(a.height, b.height);
   const da = a.getContext("2d")!.getImageData(0, 0, w, h).data;

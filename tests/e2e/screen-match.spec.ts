@@ -95,10 +95,11 @@ for (const kind of KINDS) {
   test(`screen match: ${kind}`, async ({ page }) => {
     mkdirSync(outDir, { recursive: true });
     const model = baseModel();
-    for (const p of model.pages) {
+    model.pages.forEach((p, i) => {
       const r = ((p.baseRotation + p.userRotation) % 360) as Rotation;
-      p.objects = [makeObject(kind, p.box.x0, p.box.y0, r)];
-    }
+      // Object ids are unique in a document (the core refuses duplicates, M3).
+      p.objects = [{ ...makeObject(kind, p.box.x0, p.box.y0, r), id: `${kind}-${i}` }];
+    });
     const modelPath = join(outDir, `${kind}.json`);
     const pdfPath = join(outDir, `${kind}.pdf`);
     writeFileSync(modelPath, JSON.stringify(model, null, 2));
