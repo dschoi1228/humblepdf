@@ -52,7 +52,7 @@ npm run lint                 ESLint + tsc 타입 검사
 
 npm run fixtures             합성 fixture 재생성 (tests/fixtures/, 50MB 파일은 tests/fixtures/large/)
 npm run bindings             Rust 모델 → src/bindings/*.ts 재생성
-npm run sample               out/m0_sample.pdf, out/m2_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
+npm run sample               out/m0_sample.pdf, out/m2_sample.pdf, out/m3_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
 cargo run -p pdf-editor-cli -- inspect <파일> [--password <pw>]
 cargo run -p pdf-editor-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
 cargo run -p pdf-editor-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]
