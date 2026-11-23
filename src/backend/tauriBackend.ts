@@ -5,7 +5,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import type { ExportSummary } from "../bindings/ExportSummary";
 import { baseName } from "../state/model";
 import { strings } from "../i18n";
-import type { Backend, OpenedSource, PickedFile } from "./types";
+import type { Backend, OpenedSource, PickedFile, SignatureMeta } from "./types";
 
 const toPicked = (paths: string[]): PickedFile[] => paths.map((path) => ({ path, name: baseName(path) }));
 
@@ -50,6 +50,36 @@ export const tauriBackend: Backend = {
     return getCurrentWindow().onCloseRequested(async (event) => {
       if (guard.isDirty() && !(await guard.confirm())) event.preventDefault();
     });
+  },
+
+  signatureList() {
+    return invoke<SignatureMeta[]>("signature_list");
+  },
+
+  async pickSignatureFile() {
+    const r = await open({
+      multiple: false,
+      filters: [{ name: strings().signatures.fileFilterName, extensions: ["png", "jpg", "jpeg"] }],
+    });
+    if (r === null || Array.isArray(r)) return null;
+    return toPicked([r])[0];
+  },
+
+  signatureAdd(file, name) {
+    return invoke<SignatureMeta>("signature_add", { path: file.path, name });
+  },
+
+  signatureRename(id, name) {
+    return invoke<SignatureMeta>("signature_rename", { id, name });
+  },
+
+  signatureDelete(id) {
+    return invoke<void>("signature_delete", { id });
+  },
+
+  async signatureBytes(id) {
+    const buf = await invoke<ArrayBuffer>("signature_bytes", { id });
+    return new Uint8Array(buf);
   },
 
   async setTitle(title) {

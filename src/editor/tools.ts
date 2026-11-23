@@ -4,9 +4,10 @@ import type { PageObject } from "../bindings/PageObject";
 export type Rgb = [number, number, number];
 
 export type DrawTool = "highlight" | "rect" | "ellipse" | "line" | "arrow";
-export type Tool = "select" | DrawTool;
+/** Places a signature from the library (M4); it has no properties of its own. */
+export type Tool = "select" | DrawTool | "signature";
 
-export const TOOLS: readonly Tool[] = ["select", "highlight", "rect", "ellipse", "line", "arrow"];
+export const TOOLS: readonly Tool[] = ["select", "highlight", "rect", "ellipse", "line", "arrow", "signature"];
 export const DRAW_TOOLS: readonly DrawTool[] = ["highlight", "rect", "ellipse", "line", "arrow"];
 
 /** Single-key shortcut of each tool, matched by `KeyboardEvent.code`. */
@@ -17,6 +18,7 @@ export const TOOL_KEYS: Record<Tool, string> = {
   ellipse: "KeyO",
   line: "KeyL",
   arrow: "KeyA",
+  signature: "KeyS",
 };
 
 /** Tools that stay active after an object is made (user decision, D29). */

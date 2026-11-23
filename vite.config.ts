@@ -80,6 +80,8 @@ function exportRoute(): Plugin {
             model: { sources: { id: string; path: string }[] };
             outPath: string;
             passwords: Record<string, string>;
+            /** signatureId -> base64 PNG (browser-mode signature library). */
+            signatures?: Record<string, string>;
           };
           const body = JSON.parse(text) as Body;
           const model = structuredClone(body.model);
@@ -100,9 +102,21 @@ function exportRoute(): Plugin {
           const modelFile = join(work, `model-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
           writeFileSync(modelFile, JSON.stringify(model));
           const args = ["export", "--model", modelFile, "--out", out];
+          let sigDir: string | null = null;
+          const sigs = Object.entries(body.signatures ?? {});
+          if (sigs.length) {
+            if (!sigs.every(([id]) => /^[A-Za-z0-9_-]{1,64}$/.test(id))) {
+              return reply(400, { code: "invalid_model", message: "bad signature id" });
+            }
+            sigDir = join(work, `signatures-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+            mkdirSync(sigDir, { recursive: true });
+            for (const [id, b64] of sigs) writeFileSync(join(sigDir, `${id}.png`), Buffer.from(b64, "base64"));
+            args.push("--signatures", sigDir);
+          }
           for (const [id, pw] of Object.entries(body.passwords)) args.push("--password", `${id}=${pw}`);
           execFile(cliExe, args, { encoding: "utf8" }, (err, stdout, stderr) => {
             rmSync(modelFile, { force: true });
+            if (sigDir) rmSync(sigDir, { recursive: true, force: true });
             if (!err) return reply(200, JSON.parse(stdout));
             try {
               reply(400, JSON.parse(stderr));

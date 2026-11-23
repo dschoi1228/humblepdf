@@ -4,6 +4,7 @@
 import type { PageObject } from "../bindings/PageObject";
 import type { Point } from "../bindings/Point";
 import type { Rect } from "../bindings/Rect";
+import type { Rotation } from "../bindings/Rotation";
 import { arrowLength, ARROW_BASE_RATIO } from "../shapes/spec";
 import type { DrawTool, HighlightProps, LineProps, ShapeProps } from "./tools";
 
@@ -51,6 +52,8 @@ export function objectBounds(o: PageObject): Rect | null {
       return o.rect;
     case "line":
       return normRect(o.from, o.to);
+    case "signature":
+      return o.rect;
     default:
       return null;
   }
@@ -61,7 +64,8 @@ function mapPoints(o: PageObject, f: (p: Point) => Point): PageObject {
     case "highlight":
       return { ...o, quads: o.quads.map((q) => q.map(f) as [Point, Point, Point, Point]) };
     case "rect":
-    case "ellipse": {
+    case "ellipse":
+    case "signature": {
       const a = f({ x: o.rect.x0, y: o.rect.y0 });
       const b = f({ x: o.rect.x1, y: o.rect.y1 });
       return { ...o, rect: normRect(a, b) };
@@ -96,9 +100,12 @@ export function handlesOf(o: PageObject): { handle: Handle; at: Point }[] {
   const xs = { [-1]: b.x0, 0: (b.x0 + b.x1) / 2, 1: b.x1 } as Record<number, number>;
   const ys = { [-1]: b.y0, 0: (b.y0 + b.y1) / 2, 1: b.y1 } as Record<number, number>;
   const out: { handle: Handle; at: Point }[] = [];
+  // Signatures keep their proportions: corners only.
+  const corners = o.type === "signature";
   for (const sy of [1, 0, -1] as const) {
     for (const sx of [-1, 0, 1] as const) {
       if (sx === 0 && sy === 0) continue;
+      if (corners && (sx === 0 || sy === 0)) continue;
       out.push({ handle: { sx, sy }, at: { x: xs[sx], y: ys[sy] } });
     }
   }
@@ -155,6 +162,7 @@ export function resizeObject(o: PageObject, handle: Handle, p: Point, box: Rect,
   }
   const b = objectBounds(o);
   if (!b || typeof handle === "string") return o;
+  if (o.type === "signature") return { ...o, rect: resizeKeepingRatio(b, handle, p, box) };
   const q = clampPoint(p, box);
   const n = { ...b };
   if (handle.sx === -1) n.x0 = Math.min(q.x, b.x1 - MIN_SIZE);
@@ -166,6 +174,29 @@ export function resizeObject(o: PageObject, handle: Handle, p: Point, box: Rect,
   const sx = (n.x1 - n.x0) / (b.x1 - b.x0 || 1);
   const sy = (n.y1 - n.y0) / (b.y1 - b.y0 || 1);
   return mapPoints(o, (pt) => ({ x: n.x0 + (pt.x - b.x0) * sx, y: n.y0 + (pt.y - b.y0) * sy }));
+}
+
+/**
+ * Corner drag that keeps the width/height ratio: the opposite corner stays, the size
+ * follows the pointer's larger relative move, at least MIN_SIZE on the short side and
+ * inside `box`.
+ */
+function resizeKeepingRatio(b: Rect, h: RectHandle, p: Point, box: Rect): Rect {
+  if (!h.sx || !h.sy) return b;
+  const w = b.x1 - b.x0;
+  const ht = b.y1 - b.y0;
+  const fx = h.sx === 1 ? b.x0 : b.x1;
+  const fy = h.sy === 1 ? b.y0 : b.y1;
+  const want = Math.max((h.sx * (p.x - fx)) / w, (h.sy * (p.y - fy)) / ht);
+  const room = Math.min(
+    (h.sx === 1 ? box.x1 - fx : fx - box.x0) / w,
+    (h.sy === 1 ? box.y1 - fy : fy - box.y0) / ht,
+  );
+  const least = MIN_SIZE / Math.min(w, ht);
+  const s = Math.min(Math.max(want, least), room);
+  const x = fx + h.sx * w * s;
+  const y = fy + h.sy * ht * s;
+  return normRect({ x: fx, y: fy }, { x, y });
 }
 
 function distToSegment(p: Point, a: Point, b: Point): number {
@@ -193,6 +224,9 @@ export function hitTest(objects: readonly PageObject[], p: Point, tol: number): 
         if (distToSegment(p, o.from, o.to) <= Math.max(o.strokeWidth / 2, tol, head)) return o.id;
         break;
       }
+      case "signature":
+        if (contains(inflate(o.rect, tol), p)) return o.id;
+        break;
     }
   }
   return null;
@@ -272,4 +306,39 @@ export function newObject(input: NewObjectInput): PageObject | null {
     return { type: "highlight", id, quads: [quad], ...(input.props as HighlightProps) };
   }
   return { type: tool, id, rect, ...(input.props as ShapeProps) };
+}
+
+/** Width of a placed signature as a fraction of the page width on screen (SPEC 6.8). */
+export const SIGNATURE_WIDTH_RATIO = 0.25;
+
+export type NewSignatureInput = {
+  id: string;
+  signatureId: string;
+  /** Click point (user space). */
+  at: Point;
+  /** Image width / height as stored (upright). */
+  aspect: number;
+  box: Rect;
+  /** Unit user-space vectors of the screen's right and down directions. */
+  axes: { right: Point; down: Point };
+  /** The page's display rotation: the signature is upright on screen (SPEC 5). */
+  rotation: Rotation;
+};
+
+/** A signature 25% of the page width on screen, centered on the click, inside the page. */
+export function newSignature(input: NewSignatureInput): PageObject {
+  const { box, axes } = input;
+  const pageW = Math.abs(axes.right.x) * (box.x1 - box.x0) + Math.abs(axes.right.y) * (box.y1 - box.y0);
+  const pageH = Math.abs(axes.down.x) * (box.x1 - box.x0) + Math.abs(axes.down.y) * (box.y1 - box.y0);
+  // Size on screen (pt), shrunk to fit the page with the ratio kept.
+  let w = pageW * SIGNATURE_WIDTH_RATIO;
+  let h = w / input.aspect;
+  const fit = Math.min(1, pageW / w, pageH / h);
+  w *= fit;
+  h *= fit;
+  // Screen width/height as user-space extents.
+  const ex = Math.abs(axes.right.x) * w + Math.abs(axes.down.x) * h;
+  const ey = Math.abs(axes.right.y) * w + Math.abs(axes.down.y) * h;
+  const rect = fitInBox({ x0: input.at.x - ex / 2, y0: input.at.y - ey / 2, x1: input.at.x + ex / 2, y1: input.at.y + ey / 2 }, box);
+  return { type: "signature", id: input.id, signatureId: input.signatureId, rect, rotation: input.rotation };
 }

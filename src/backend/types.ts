@@ -13,6 +13,12 @@ export type OpenedSource = {
 /** A file chosen in the open dialog or dropped on the window. */
 export type PickedFile = { path: string; name: string };
 
+/**
+ * A signature in the library (D30). Mirrors `src-tauri/src/signatures.rs`; it is app state,
+ * not part of the document model, so it is not generated from the core.
+ */
+export type SignatureMeta = { id: string; name: string; width: number; height: number; added: number };
+
 /** Error shape returned by the backend: `{ code, message }`. */
 export type BackendError = { code: string; message: string };
 
@@ -45,6 +51,16 @@ export interface Backend {
    * is cancelled when it resolves false. Returns an unsubscribe function.
    */
   onCloseRequested(guard: { isDirty: () => boolean; confirm: () => Promise<boolean> }): Promise<() => void>;
+  /** Signature library (SPEC 6.8, D30). */
+  signatureList(): Promise<SignatureMeta[]>;
+  /** Shows the open dialog for one PNG or JPEG. Returns null when cancelled. */
+  pickSignatureFile(): Promise<PickedFile | null>;
+  /** Normalizes and stores the image. Rejects with `unknown_format`, `invalid_image`, `invalid_name`. */
+  signatureAdd(file: PickedFile, name: string): Promise<SignatureMeta>;
+  signatureRename(id: string, name: string): Promise<SignatureMeta>;
+  signatureDelete(id: string): Promise<void>;
+  /** The stored PNG. */
+  signatureBytes(id: string): Promise<Uint8Array>;
   /** Sets the window title (follows the UI language, D27). */
   setTitle(title: string): Promise<void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */

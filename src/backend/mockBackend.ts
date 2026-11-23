@@ -14,6 +14,14 @@ import { baseName } from "../state/model";
 import { strings } from "../i18n";
 import { openPdf } from "../viewer/pdfjs";
 import type { Backend, BackendError, OpenedSource, PickedFile } from "./types";
+import {
+  mockSignatureAdd,
+  mockSignatureBytes,
+  mockSignatureDelete,
+  mockSignatureFiles,
+  mockSignatureList,
+  mockSignatureRename,
+} from "./mockSignatures";
 
 const sources = new Map<string, string>();
 let nextId = 1;
@@ -71,12 +79,12 @@ async function imageInfo(name: string): Promise<SourceInfo> {
   return (await res.json()) as SourceInfo;
 }
 
-function pickWithInput(): Promise<PickedFile[] | null> {
+function pickWithInput(accept = ".pdf,.jpg,.jpeg,.png", multiple = true): Promise<PickedFile[] | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.multiple = true;
-    input.accept = ".pdf,.jpg,.jpeg,.png";
+    input.multiple = multiple;
+    input.accept = accept;
     input.onchange = () => resolve(input.files?.length ? filesToPicked([...input.files]) : null);
     input.oncancel = () => resolve(null);
     input.click();
@@ -128,7 +136,7 @@ export const mockBackend: Backend = {
     };
   },
 
-  pickFiles: pickWithInput,
+  pickFiles: () => pickWithInput(),
 
   async pickSavePath(defaultPath) {
     // Never suggest writing into the fixtures folder.
@@ -140,7 +148,15 @@ export const mockBackend: Backend = {
     const res = await fetch("/__export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, outPath, passwords }),
+      body: JSON.stringify({
+        model,
+        outPath,
+        passwords,
+        // The dev server writes these where the CLI's --signatures folder points.
+        signatures: mockSignatureFiles(
+          model.pages.flatMap((p) => p.objects.flatMap((o) => (o.type === "signature" ? [o.signatureId] : []))),
+        ),
+      }),
     });
     const body = (await res.json()) as unknown;
     if (!res.ok) throw body as BackendError;
@@ -154,6 +170,16 @@ export const mockBackend: Backend = {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   },
+
+  signatureList: mockSignatureList,
+  async pickSignatureFile() {
+    const files = await pickWithInput(".png,.jpg,.jpeg", false);
+    return files?.[0] ?? null;
+  },
+  signatureAdd: mockSignatureAdd,
+  signatureRename: mockSignatureRename,
+  signatureDelete: mockSignatureDelete,
+  signatureBytes: mockSignatureBytes,
 
   async setTitle(title) {
     document.title = title;

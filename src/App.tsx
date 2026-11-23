@@ -5,6 +5,9 @@ import { deleteTargets, rotateTargets } from "./app/pageActions";
 import { deleteSelectedObject, nudgeSelectedObject } from "./app/objectActions";
 import { useEditorStore } from "./editor/editorStore";
 import { EditBar } from "./components/EditBar";
+import { SignatureDialog } from "./components/SignatureDialog";
+import { chooseTool } from "./app/toolActions";
+import { useSignatureStore } from "./signatures/signatureStore";
 import { confirmDiscard, newDocument, save, saveAs } from "./app/save";
 import { shortcutFor, shortcutsBlocked, type ShortcutAction } from "./app/shortcuts";
 import { SavingDialog, UnsavedDialog } from "./components/SaveDialogs";
@@ -19,7 +22,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { isDirty, useDocumentStore } from "./state/documentStore";
 import { baseName } from "./state/model";
 import { useViewStore } from "./state/viewStore";
-import { dictionary, useLocaleStore } from "./i18n";
+import { dictionary, errorMessage, strings, useLocaleStore } from "./i18n";
+import { toast } from "sonner";
 import "./viewer/testHooks";
 
 /** Resolves when the first page of the document has been drawn. */
@@ -42,7 +46,7 @@ function runShortcut(action: ShortcutAction): boolean {
   if (typeof action === "object") {
     if (action.kind === "tool") {
       if (!doc.doc.pages.length) return false;
-      editor.setTool(action.tool);
+      chooseTool(action.tool);
       return true;
     }
     return nudgeSelectedObject(action.dx, action.dy);
@@ -128,6 +132,10 @@ export default function App() {
     // StrictMode runs effects twice; the startup hooks must run once.
     if (!started.current) {
       started.current = true;
+      void useSignatureStore
+        .getState()
+        .load()
+        .catch((e) => toast.error(strings().signatures.failed, { description: errorMessage(isBackendError(e) ? e.code : "generic") }));
       void (async () => {
         // Measurement hook (PDF_EDITOR_BENCH / ?bench=): time to the first drawn page.
         const bench = await backend.benchConfig();
@@ -171,6 +179,7 @@ export default function App() {
       <PasswordDialog />
       <SavingDialog />
       <UnsavedDialog />
+      <SignatureDialog />
       <Toaster position="bottom-right" richColors closeButton />
     </TooltipProvider>
   );

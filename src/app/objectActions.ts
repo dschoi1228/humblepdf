@@ -16,7 +16,7 @@ export function selectedObject(): { pageId: string; object: PageObject; box: Rec
 }
 
 /** Adds an object made by a draw tool as one Undo step and selects it. */
-export function commitNewObject(pageId: string, object: PageObject, tool: DrawTool): void {
+export function commitNewObject(pageId: string, object: PageObject, tool: DrawTool | "signature"): void {
   useDocumentStore.getState().apply((d) => addObject(d, pageId, object));
   const editor = useEditorStore.getState();
   if (STICKY_TOOLS.has(tool)) return;
@@ -44,7 +44,9 @@ export function setProps(patch: PropsPatch): void {
     if (tool) editor.setToolProps(tool, patch as Partial<ToolProps[typeof tool]>);
     return;
   }
-  if (editor.tool !== "select") editor.setToolProps(editor.tool, patch as Partial<ToolProps[DrawTool]>);
+  if (editor.tool !== "select" && editor.tool !== "signature") {
+    editor.setToolProps(editor.tool, patch as Partial<ToolProps[DrawTool]>);
+  }
 }
 
 /** Deletes the selected object. Returns false when no object is selected. */
@@ -70,3 +72,4 @@ export function nudgeSelectedObject(dx: number, dy: number): boolean {
   commitObject(sel.pageId, moveObject(sel.object, d.x, d.y, sel.box));
   return true;
 }
+

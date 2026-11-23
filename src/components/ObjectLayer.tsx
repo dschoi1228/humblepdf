@@ -6,7 +6,8 @@ import type { Page } from "../bindings/Page";
 import type { PageObject } from "../bindings/PageObject";
 import type { Point } from "../bindings/Point";
 import { commitNewObject, commitObject } from "../app/objectActions";
-import { cssMatrix, rectToScreen, screenAxes, toScreen, toUser, type PageTransform } from "../coords";
+import { cssMatrix, displayRotation, rectToScreen, screenAxes, toScreen, toUser, type PageTransform } from "../coords";
+import { useSignatureStore } from "../signatures/signatureStore";
 import { useEditorStore } from "../editor/editorStore";
 import {
   clampPoint,
@@ -17,6 +18,7 @@ import {
   newObject,
   objectBounds,
   parseHandle,
+  newSignature,
   resizeObject,
   type Handle,
 } from "../editor/geometry";
@@ -35,6 +37,23 @@ const ASSETS: OverlayAssets = { fontFamily: "PdfEditorBundled", signatureUrl: ()
 /** One object as its own SVG, so a highlight can multiply with the page canvas below it. */
 export const ObjectSvg = memo(function ObjectSvg(props: { object: PageObject; transform: PageTransform }) {
   const { object, transform } = props;
+  const signatureId = object.type === "signature" ? object.signatureId : null;
+  const url = useSignatureStore((s) => (signatureId ? s.urls[signatureId] : undefined));
+  const missing = useSignatureStore((s) => (signatureId ? !!s.failed[signatureId] : false));
+  useEffect(() => {
+    if (signatureId) useSignatureStore.getState().ensureUrl(signatureId);
+  }, [signatureId]);
+  if (object.type === "signature" && !url) {
+    // Loading, or deleted from the library: a dashed placeholder where it sits.
+    if (!missing) return null;
+    const r = rectToScreen(transform, object.rect);
+    return (
+      <svg className="pointer-events-none absolute inset-0" width={transform.width} height={transform.height} data-object-id={object.id} data-testid="object">
+        <rect x={r.x0} y={r.y0} width={r.x1 - r.x0} height={r.y1 - r.y0} fill="none" stroke="#dc2626" strokeDasharray="4 3" />
+      </svg>
+    );
+  }
+  const assets: OverlayAssets = url ? { ...ASSETS, signatureUrl: () => url } : ASSETS;
   return (
     <svg
       className="pointer-events-none absolute inset-0"
@@ -45,7 +64,7 @@ export const ObjectSvg = memo(function ObjectSvg(props: { object: PageObject; tr
       data-object-type={object.type}
       data-testid="object"
     >
-      <g transform={cssMatrix(transform.matrix)} dangerouslySetInnerHTML={{ __html: objectSvg(object, ASSETS) }} />
+      <g transform={cssMatrix(transform.matrix)} dangerouslySetInnerHTML={{ __html: objectSvg(object, assets) }} />
     </svg>
   );
 });
@@ -130,6 +149,26 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
         editor.select({ pageId: page.id, objectId: id });
         drag.current = { kind: "move", pointerId: e.pointerId, start: p, orig: page.objects.find((o) => o.id === id)! };
       }
+    } else if (tool === "signature") {
+      // A click places the chosen library signature (D31).
+      const lib = useSignatureStore.getState();
+      const sig = lib.list.find((x) => x.id === lib.current);
+      if (!sig) {
+        lib.openDialog();
+        return;
+      }
+      e.preventDefault();
+      const object = newSignature({
+        id: crypto.randomUUID(),
+        signatureId: sig.id,
+        at: clampPoint(p, page.box),
+        aspect: sig.width / sig.height,
+        box: page.box,
+        axes: screenAxes(transform),
+        rotation: displayRotation(page.baseRotation, page.userRotation),
+      });
+      commitNewObject(page.id, object, "signature");
+      return;
     } else {
       drag.current = {
         kind: "create",

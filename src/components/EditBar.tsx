@@ -1,9 +1,11 @@
 // Second toolbar row (D29): editing tools on the left, properties of the selected object
 // (or of the current draw tool) on the right.
-import { Ban, Circle, Highlighter, MousePointer2, MoveUpRight, Slash, Square, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { Ban, Circle, Highlighter, MousePointer2, MoveUpRight, Settings2, Signature, Slash, Square, Trash2 } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import type { PageObject } from "../bindings/PageObject";
 import { deleteSelectedObject, setProps } from "../app/objectActions";
+import { chooseTool } from "../app/toolActions";
+import { useSignatureStore } from "../signatures/signatureStore";
 import { useEditorStore } from "../editor/editorStore";
 import {
   HIGHLIGHT_COLORS,
@@ -32,6 +34,7 @@ const TOOL_ICONS: Record<Tool, ReactNode> = {
   ellipse: <Circle />,
   line: <Slash />,
   arrow: <MoveUpRight />,
+  signature: <Signature />,
 };
 
 const css = (c: Rgb) => `rgb(${c.map((v) => Math.round(v * 255)).join(",")})`;
@@ -186,6 +189,40 @@ function Properties(props: { kind: DrawTool; values: PropsPatch }) {
   );
 }
 
+/** Library signatures to place, and the library button (D31). */
+function SignaturePicker() {
+  const t = useStrings();
+  const list = useSignatureStore((s) => s.list);
+  const current = useSignatureStore((s) => s.current);
+  const urls = useSignatureStore((s) => s.urls);
+  useEffect(() => {
+    for (const s of list) useSignatureStore.getState().ensureUrl(s.id);
+  }, [list]);
+  return (
+    <div className="flex items-center gap-1.5" role="group" aria-label={t.signatures.pick}>
+      {list.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          className="grid h-8 w-16 place-items-center rounded-md border border-neutral-300 bg-white p-0.5 aria-pressed:ring-2 aria-pressed:ring-blue-500"
+          aria-pressed={s.id === current}
+          aria-label={s.name}
+          title={s.name}
+          onClick={() => useSignatureStore.getState().setCurrent(s.id)}
+          data-testid="signature-choice"
+          data-signature-id={s.id}
+        >
+          {urls[s.id] && <img src={urls[s.id]} alt="" className="max-h-full max-w-full object-contain" />}
+        </button>
+      ))}
+      <span className="text-xs text-neutral-500">{list.length ? t.signatures.placeHint : t.signatures.empty}</span>
+      <IconButton label={t.signatures.manage} onClick={() => useSignatureStore.getState().openDialog()} testId="manage-signatures">
+        <Settings2 />
+      </IconButton>
+    </div>
+  );
+}
+
 export function EditBar() {
   const t = useStrings();
   const empty = useDocumentStore((s) => s.doc.pages.length === 0);
@@ -193,7 +230,7 @@ export function EditBar() {
   const toolProps = useEditorStore((s) => s.props);
   const selected = useSelectedObject();
 
-  const kind: DrawTool | null = selected ? toolOf(selected) : tool === "select" ? null : tool;
+  const kind: DrawTool | null = selected ? toolOf(selected) : tool === "select" || tool === "signature" ? null : tool;
   const values = selected ? propsOf(selected) : kind ? toolProps[kind] : null;
 
   return (
@@ -209,7 +246,7 @@ export function EditBar() {
           label={`${t.editor.tools[tl]} (${TOOL_KEYS[tl].slice(3)})`}
           pressed={tool === tl}
           disabled={empty}
-          onClick={() => useEditorStore.getState().setTool(tl)}
+          onClick={() => chooseTool(tl)}
           testId={`tool-${tl}`}
         >
           {TOOL_ICONS[tl]}
@@ -219,6 +256,8 @@ export function EditBar() {
       <div className="flex items-center gap-3" data-testid="properties">
         {kind && values ? (
           <Properties kind={kind} values={values} />
+        ) : tool === "signature" && !selected ? (
+          <SignaturePicker />
         ) : (
           !empty && <span className="text-xs text-neutral-500">{t.editor.hint}</span>
         )}
