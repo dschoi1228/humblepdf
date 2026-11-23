@@ -240,3 +240,48 @@ test("saved text is a FreeText annotation with the typed contents", async ({ pag
   expect(w.external).toEqual([]);
   expect(w.consoleProblems).toEqual([]);
 });
+
+test("copy, paste and duplicate objects with the keyboard", async ({ page }) => {
+  const w = watch(page);
+  await open(page, ["rotated.pdf"]);
+  await showPage(page, 0);
+  const b = (await model(page)).pages[0].box;
+  // A text and a rectangle on page 1.
+  await page.keyboard.press("KeyT");
+  await click(page, 0, { x: b.x0 + 100, y: b.y0 + 600 });
+  await page.keyboard.type("복사할 글 コピー");
+  await page.keyboard.press("Control+Enter");
+  const base = await undoDepth(page);
+
+  // Ctrl+C, Ctrl+V twice: two copies, each 10pt further right and down, newest selected.
+  await page.keyboard.press("Control+c");
+  await page.keyboard.press("Control+v");
+  await page.keyboard.press("Control+v");
+  let all = await texts(page, 0);
+  expect(all).toHaveLength(3);
+  expect(all.map((t) => t.lines[0])).toEqual(["복사할 글 コピー", "복사할 글 コピー", "복사할 글 コピー"]);
+  expect(all[2].origin.x - all[0].origin.x).toBeCloseTo(20, 6);
+  expect(all[2].origin.y - all[0].origin.y).toBeCloseTo(-20, 6);
+  expect((await editor(page)).selected?.objectId).toBe(all[2].id);
+  expect(await undoDepth(page)).toBe(base + 2);
+
+  // Ctrl+D duplicates the selection.
+  await page.keyboard.press("Control+d");
+  expect(await texts(page, 0)).toHaveLength(4);
+
+  // Paste on the page shown at 90 degrees: the text turns to stay upright there.
+  await page.keyboard.press("Escape");
+  await showPage(page, 1);
+  await page.keyboard.press("Control+v");
+  all = await texts(page, 1);
+  expect(all).toHaveLength(1);
+  expect(all[0].rotation).toBe(90);
+
+  // Undo removes the paste only.
+  await page.keyboard.press("Control+z");
+  expect(await texts(page, 1)).toHaveLength(0);
+  expect(await texts(page, 0)).toHaveLength(4);
+
+  expect(w.external).toEqual([]);
+  expect(w.consoleProblems).toEqual([]);
+});

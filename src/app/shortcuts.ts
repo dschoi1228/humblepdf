@@ -14,6 +14,9 @@ export type ShortcutAction =
   | "rotateLeft"
   | "rotateRight"
   | "escape"
+  | "copy"
+  | "paste"
+  | "duplicate"
   | { kind: "tool"; tool: Tool }
   /** Arrow keys: move the selected object by (dx, dy) pt in screen directions. */
   | { kind: "nudge"; dx: number; dy: number };
@@ -50,6 +53,12 @@ export function shortcutFor(e: KeyLike): ShortcutAction | null {
       return e.shiftKey ? null : "redo";
     case "KeyA":
       return e.shiftKey ? null : "selectAll";
+    case "KeyC":
+      return e.shiftKey ? null : "copy";
+    case "KeyV":
+      return e.shiftKey ? null : "paste";
+    case "KeyD":
+      return e.shiftKey ? null : "duplicate";
     case "KeyS":
       return e.shiftKey ? "saveAs" : "save";
     case "KeyN":

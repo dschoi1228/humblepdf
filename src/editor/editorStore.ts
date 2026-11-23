@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Point } from "../bindings/Point";
 import type { Rotation } from "../bindings/Rotation";
 import { findObject } from "../state/objects";
+import type { Copied } from "./clipboard";
 import { useDocumentStore } from "../state/documentStore";
 import { DEFAULT_PROPS, type DrawTool, type Tool, type ToolProps } from "./tools";
 
@@ -19,12 +20,15 @@ type EditorState = {
   /** True while a pointer drag on an object layer is in progress. */
   dragging: boolean;
   editing: TextEditing | null;
+  /** The copied object (in-app clipboard, session only) and how often it was pasted. */
+  clipboard: { copied: Copied; pastes: number } | null;
 
   setTool: (tool: Tool) => void;
   select: (sel: SelectedObject | null) => void;
   setToolProps: <T extends DrawTool>(tool: T, patch: Partial<ToolProps[T]>) => void;
   setDragging: (dragging: boolean) => void;
   setEditing: (editing: TextEditing | null) => void;
+  setClipboard: (clipboard: { copied: Copied; pastes: number } | null) => void;
 };
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -33,12 +37,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   props: DEFAULT_PROPS,
   dragging: false,
   editing: null,
+  clipboard: null,
   // Picking a draw tool drops the object selection; the selection tool keeps it.
   setTool: (tool) => set((s) => ({ tool, selected: tool === "select" ? s.selected : null })),
   select: (selected) => set({ selected }),
   setToolProps: (tool, patch) => set((s) => ({ props: { ...s.props, [tool]: { ...s.props[tool], ...patch } } })),
   setDragging: (dragging) => set({ dragging }),
   setEditing: (editing) => set({ editing }),
+  setClipboard: (clipboard) => set({ clipboard }),
 }));
 
 // The selection follows the document: an object removed by Undo, a page deletion or a new

@@ -2,7 +2,13 @@
 import { useEffect, useRef } from "react";
 import { addFiles, pickAndAddFiles } from "./app/actions";
 import { deleteTargets, rotateTargets } from "./app/pageActions";
-import { deleteSelectedObject, nudgeSelectedObject } from "./app/objectActions";
+import {
+  copySelectedObject,
+  deleteSelectedObject,
+  duplicateSelectedObject,
+  nudgeSelectedObject,
+  pasteObject,
+} from "./app/objectActions";
 import { useEditorStore } from "./editor/editorStore";
 import { EditBar } from "./components/EditBar";
 import { SignatureDialog } from "./components/SignatureDialog";
@@ -58,6 +64,12 @@ function runShortcut(action: ShortcutAction): boolean {
       // The selected object goes first; otherwise the selected pages (SPEC 6.4).
       if (!deleteSelectedObject()) deleteTargets();
       return true;
+    case "copy":
+      return copySelectedObject();
+    case "paste":
+      return pasteObject();
+    case "duplicate":
+      return duplicateSelectedObject();
     case "escape":
       if (editor.tool !== "select") editor.setTool("select");
       else if (editor.selected) editor.select(null);

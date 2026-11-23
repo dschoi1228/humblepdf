@@ -7,6 +7,8 @@ import { keepInside, moveObject } from "../editor/geometry";
 import { STICKY_TOOLS, toolOf, withProps, type DrawTool, type PropsPatch, type ToolProps } from "../editor/tools";
 import { useDocumentStore } from "../state/documentStore";
 import { addObject, deleteObject, findObject, updateObject } from "../state/objects";
+import { useViewStore } from "../state/viewStore";
+import { copyOf, pasted } from "../editor/clipboard";
 
 export function selectedObject(): { pageId: string; object: PageObject; box: Rect } | null {
   const sel = useEditorStore.getState().selected;
@@ -73,3 +75,38 @@ export function nudgeSelectedObject(dx: number, dy: number): boolean {
   return true;
 }
 
+
+/** Copies the selected object (in-app clipboard, D35). False when nothing is selected. */
+export function copySelectedObject(): boolean {
+  const sel = selectedObject();
+  if (!sel) return false;
+  const page = useDocumentStore.getState().doc.pages.find((p) => p.id === sel.pageId)!;
+  useEditorStore.getState().setClipboard({ copied: copyOf(page, sel.object), pastes: 0 });
+  return true;
+}
+
+/**
+ * Pastes the copied object onto the current page (or the page of the selected object) as
+ * one Undo step and selects it. False when the clipboard is empty.
+ */
+export function pasteObject(): boolean {
+  const editor = useEditorStore.getState();
+  const clip = editor.clipboard;
+  if (!clip) return false;
+  const { doc } = useDocumentStore.getState();
+  const selPage = editor.selected?.pageId;
+  const target = (selPage && doc.pages.find((p) => p.id === selPage)) || doc.pages[useViewStore.getState().currentPage];
+  if (!target) return false;
+  const pastes = target.id === clip.copied.pageId ? clip.pastes + 1 : 1;
+  const object = pasted(clip.copied, target, pastes, crypto.randomUUID());
+  useDocumentStore.getState().apply((d) => addObject(d, target.id, object));
+  editor.setClipboard({ ...clip, pastes: target.id === clip.copied.pageId ? pastes : clip.pastes });
+  if (editor.tool !== "select") editor.setTool("select");
+  editor.select({ pageId: target.id, objectId: object.id });
+  return true;
+}
+
+/** Ctrl+D: a copy of the selected object next to it. False when nothing is selected. */
+export function duplicateSelectedObject(): boolean {
+  return copySelectedObject() && pasteObject();
+}
