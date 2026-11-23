@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 use lopdf::{Dictionary, Object, ObjectId, Stream, dictionary};
 
 use crate::export::image::{fmt_num as n, reference};
-use crate::font::EncodedText;
+use crate::font::TextRun;
 use crate::model::{Highlight, Line, Point, Rect, Rgb, Rotation, Shape, Signature, Text};
 use crate::pdf_util::rect_to_object;
 use crate::shape_spec::{ARROW_BASE_RATIO, ELLIPSE_KAPPA, LINE_HEIGHT, arrow_length};
@@ -255,28 +255,28 @@ pub struct TextMetrics {
     pub descent: f64,
 }
 
-/// Text: one `Tj` per line, baseline `i * LINE_HEIGHT * size` below the first, using
-/// default advance widths only (SPEC 6.7, 7.6).
+/// Text: lines `i * LINE_HEIGHT * size` below the first, each drawn as runs that switch
+/// between the bundled fonts (D32), using default advance widths only (SPEC 6.7, 7.6).
 pub fn text(
     t: &Text,
-    lines: &[EncodedText],
-    font_id: ObjectId,
+    lines: &[Vec<TextRun>],
+    font_ids: &[Option<ObjectId>; 2],
     metrics: TextMetrics,
 ) -> Appearance {
     let (cos, sin) = ccw(t.rotation);
     let size = t.font_size;
     let lh = LINE_HEIGHT * size;
-    let mut c = format!("q BT /{RES_PREFIX}F0 {} Tf {} rg\n", n(size), rgb(&t.color));
+    let mut c = format!("q BT {} rg\n", rgb(&t.color));
     let mut max_adv: f64 = 0.0;
-    for (i, enc) in lines.iter().enumerate() {
+    let mut used = [false; 2];
+    for (i, runs) in lines.iter().enumerate() {
         // Local (unrotated) baseline start: (0, -i * lh).
         let ly = -(i as f64) * lh;
         let x = t.origin.x - sin * ly;
         let y = t.origin.y + cos * ly;
-        let hex: String = enc.codes.iter().map(|b| format!("{b:02X}")).collect();
         let _ = writeln!(
             c,
-            "{} {} {} {} {} {} Tm <{hex}> Tj",
+            "{} {} {} {} {} {} Tm",
             n(cos),
             n(sin),
             n(-sin),
@@ -284,7 +284,15 @@ pub fn text(
             n(x),
             n(y)
         );
-        max_adv = max_adv.max(enc.advance * size / 1000.0);
+        // `Tj` advances by the run's /W widths, so the next run follows on.
+        let mut adv = 0.0;
+        for run in runs {
+            used[run.font] = true;
+            let hex: String = run.enc.codes.iter().map(|b| format!("{b:02X}")).collect();
+            let _ = writeln!(c, "/{RES_PREFIX}F{} {} Tf <{hex}> Tj", run.font, n(size));
+            adv += run.enc.advance;
+        }
+        max_adv = max_adv.max(adv * size / 1000.0);
     }
     c.push_str("ET Q\n");
 
@@ -307,10 +315,13 @@ pub fn text(
     })
     .collect();
     let bbox = Rect::from_points(&corners).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0));
-    let res = dictionary! {
-        "Font" => dictionary! { format!("{RES_PREFIX}F0") => reference(font_id) },
-    };
-    form(c, bbox, res)
+    let mut fonts = Dictionary::new();
+    for (i, id) in font_ids.iter().enumerate() {
+        if let (true, Some(id)) = (used[i], id) {
+            fonts.set(format!("{RES_PREFIX}F{i}"), reference(*id));
+        }
+    }
+    form(c, bbox, dictionary! { "Font" => fonts })
 }
 
 /// `cm` mapping the unit square (image upright) into `r` rotated counter-clockwise.

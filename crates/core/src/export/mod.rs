@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::error::{CoreError, Result};
-use crate::font::{EncodedText, FontSubsetBuilder};
+use crate::font::{FontSet, TextRun};
 use crate::model::{self, PageObject};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
@@ -113,26 +113,22 @@ fn write_objects(
     ctx: &ExportContext,
 ) -> Result<Vec<ExportWarning>> {
     // Pass 1: encode all text so the font subset is written once and shared (SPEC 7.6).
-    let mut font: Option<FontSubsetBuilder<'static>> = None;
-    let mut encoded: HashMap<(usize, usize), Vec<EncodedText>> = HashMap::new();
+    let mut font: Option<FontSet> = None;
+    let mut encoded: HashMap<(usize, usize), Vec<Vec<TextRun>>> = HashMap::new();
     for (pi, page) in model.pages.iter().enumerate() {
         for (oi, obj) in page.objects.iter().enumerate() {
             if let PageObject::Text(t) = obj {
                 if font.is_none() {
-                    font = Some(FontSubsetBuilder::bundled()?);
+                    font = Some(FontSet::bundled()?);
                 }
                 if let Some(f) = font.as_mut() {
-                    encoded.insert((pi, oi), t.lines.iter().map(|l| f.encode(l)).collect());
+                    encoded.insert((pi, oi), t.lines.iter().map(|l| f.encode_line(l)).collect());
                 }
             }
         }
     }
-    let (font_id, metrics, missing) = match &font {
-        Some(f) => (
-            Some(f.write(doc)?),
-            Some(f.metrics()),
-            f.missing_chars().clone(),
-        ),
+    let (font_ids, metrics, missing) = match &font {
+        Some(f) => (Some(f.write(doc)?), Some(f.metrics()), f.missing_chars()),
         None => (None, None, Default::default()),
     };
 
@@ -150,10 +146,10 @@ fn write_objects(
                 PageObject::Ellipse(s) => appearance::ellipse(s),
                 PageObject::Line(l) => appearance::line(l),
                 PageObject::Text(t) => {
-                    let (Some(fid), Some(m)) = (font_id, metrics) else {
+                    let (Some(ids), Some(m)) = (&font_ids, metrics) else {
                         return Err(CoreError::Font("font missing".into()));
                     };
-                    appearance::text(t, &encoded[&(pi, oi)], fid, m)
+                    appearance::text(t, &encoded[&(pi, oi)], ids, m)
                 }
                 PageObject::Signature(s) => {
                     let img = match signature_images.get(&s.signature_id) {

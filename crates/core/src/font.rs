@@ -17,6 +17,9 @@ use crate::error::{CoreError, Result};
 /// The bundled font. The frontend loads the same file (CLAUDE.md, D8).
 pub static BUNDLED_FONT: &[u8] = include_bytes!("../../../assets/fonts/Pretendard-Regular.ttf");
 pub const BUNDLED_FONT_NAME: &str = "Pretendard-Regular";
+/// Japanese companion: Pretendard JP cut to common characters (D32, `npm run fonts`).
+pub static JP_FONT: &[u8] = include_bytes!("../../../assets/fonts/PretendardJP-Common.ttf");
+pub const JP_FONT_NAME: &str = "PretendardJP-Common";
 
 /// Collects the glyphs used by a document and writes the subset font once.
 pub struct FontSubsetBuilder<'a> {
@@ -84,6 +87,11 @@ impl<'a> FontSubsetBuilder<'a> {
         text.chars()
             .map(|c| self.advance_1000(self.glyph_for(c).unwrap_or(self.blank_glyph())))
             .sum()
+    }
+
+    /// True when the font has a glyph for `c`.
+    pub fn has(&self, c: char) -> bool {
+        self.glyph_for(c).is_some()
     }
 
     fn glyph_for(&self, c: char) -> Option<ttf_parser::GlyphId> {
@@ -287,5 +295,92 @@ mod tests {
             "subset document is {} bytes",
             bytes.len()
         );
+    }
+}
+
+/// Characters drawn with one font of a [`FontSet`].
+#[derive(Debug, Clone)]
+pub struct TextRun {
+    /// Index into the set: 0 = Pretendard, 1 = Pretendard JP.
+    pub font: usize,
+    pub enc: EncodedText,
+}
+
+/// The bundled fonts in fallback order (D32): each character is drawn with the first font
+/// that has it, the way CSS `font-family` fallback picks glyphs on screen. Characters no
+/// font has are drawn blank with the first font and reported.
+pub struct FontSet {
+    fonts: [FontSubsetBuilder<'static>; 2],
+    used: [bool; 2],
+}
+
+impl FontSet {
+    pub fn bundled() -> Result<FontSet> {
+        Ok(FontSet {
+            fonts: [
+                FontSubsetBuilder::new(BUNDLED_FONT, BUNDLED_FONT_NAME)?,
+                FontSubsetBuilder::new(JP_FONT, JP_FONT_NAME)?,
+            ],
+            used: [false; 2],
+        })
+    }
+
+    /// Index of the font that draws `c`.
+    pub fn font_for(&self, c: char) -> usize {
+        if c.is_whitespace() || self.fonts[0].has(c) {
+            0
+        } else if self.fonts[1].has(c) {
+            1
+        } else {
+            0
+        }
+    }
+
+    /// Encodes one line as runs of consecutive characters that share a font.
+    pub fn encode_line(&mut self, text: &str) -> Vec<TextRun> {
+        let mut runs: Vec<(usize, String)> = Vec::new();
+        for c in text.chars() {
+            let f = self.font_for(c);
+            match runs.last_mut() {
+                Some((font, s)) if *font == f => s.push(c),
+                _ => runs.push((f, c.to_string())),
+            }
+        }
+        runs.into_iter()
+            .map(|(font, s)| {
+                self.used[font] = true;
+                TextRun {
+                    font,
+                    enc: self.fonts[font].encode(&s),
+                }
+            })
+            .collect()
+    }
+
+    /// Ascent (largest) and descent (lowest) over the fonts, in 1/1000 em.
+    pub fn metrics(&self) -> crate::export::appearance::TextMetrics {
+        let (a, b) = (self.fonts[0].metrics(), self.fonts[1].metrics());
+        crate::export::appearance::TextMetrics {
+            ascent: a.ascent.max(b.ascent),
+            descent: a.descent.min(b.descent),
+        }
+    }
+
+    pub fn missing_chars(&self) -> BTreeSet<char> {
+        self.fonts
+            .iter()
+            .flat_map(|f| f.missing_chars().iter().copied())
+            .collect()
+    }
+
+    /// Writes the fonts that some text used; `None` for the others.
+    pub fn write(&self, doc: &mut Document) -> Result<[Option<ObjectId>; 2]> {
+        let mut ids = [None; 2];
+        for (i, f) in self.fonts.iter().enumerate() {
+            if self.used[i] {
+                ids[i] = Some(f.write(doc)?);
+            }
+        }
+        Ok(ids)
     }
 }
