@@ -98,7 +98,7 @@ export const ja: Strings = {
     fontSize: "文字サイズ",
     opacity: "不透明度",
     deleteObject: "オブジェクトを削除",
-    hint: "オブジェクトをクリックすると選択できます。ツールを選んでページ上でドラッグすると作成できます。",
+    hint: "オブジェクトをクリックして選択します。追加するには左のツールを選んでください。",
     colors: {
       black: "黒",
       red: "赤",
@@ -120,7 +120,7 @@ export const ja: Strings = {
     add: "署名を追加",
     empty: "登録された署名はありません。「署名を追加」を押して画像を選んでください。",
     pick: "配置する署名",
-    placeHint: "ページをクリックすると、選んだ署名が配置されます。",
+    placeHint: "ページをクリックして署名を配置します。",
     name: "名前",
     rename: "名前を変更",
     delete: "削除",

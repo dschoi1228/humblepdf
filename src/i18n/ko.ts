@@ -96,7 +96,7 @@ export const ko = {
     fontSize: "글자 크기",
     opacity: "불투명도",
     deleteObject: "객체 삭제",
-    hint: "객체를 클릭하면 선택됩니다. 도구를 골라 페이지 위에서 끌면 객체를 만듭니다.",
+    hint: "객체를 클릭해 선택하세요. 새로 만들려면 왼쪽에서 도구를 고르세요.",
     colors: {
       black: "검정",
       red: "빨강",
@@ -118,7 +118,7 @@ export const ko = {
     add: "서명 추가",
     empty: "등록한 서명이 없습니다. 서명 추가를 눌러 이미지를 고르세요.",
     pick: "배치할 서명",
-    placeHint: "페이지를 클릭하면 고른 서명이 놓입니다.",
+    placeHint: "페이지를 클릭해 서명을 놓으세요.",
     name: "이름",
     rename: "이름 바꾸기",
     delete: "삭제",

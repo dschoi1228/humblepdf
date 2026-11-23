@@ -97,7 +97,7 @@ export const en: Strings = {
     fontSize: "Font size",
     opacity: "Opacity",
     deleteObject: "Delete object",
-    hint: "Click an object to select it. Pick a tool and drag on a page to draw.",
+    hint: "Click an object to select it. To add one, pick a tool on the left.",
     colors: {
       black: "Black",
       red: "Red",
@@ -119,7 +119,7 @@ export const en: Strings = {
     add: "Add signature",
     empty: "No signatures yet. Click Add signature and choose an image.",
     pick: "Signature to place",
-    placeHint: "Click a page to place the chosen signature.",
+    placeHint: "Click the page to place the signature.",
     name: "Name",
     rename: "Rename",
     delete: "Delete",
