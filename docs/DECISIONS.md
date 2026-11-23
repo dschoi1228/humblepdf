@@ -256,15 +256,36 @@
   - 보관함이 비어 있으면 서명 도구를 고를 때 보관함 대화상자를 연다.
 - 이유: 배치된 서명을 지우면 저장이 깨진다. 실행 취소 기록까지 막으면 지울 수 없는 이유를 알기 어렵다.
 
+### D32. 일본어 폰트: Pretendard JP의 자주 쓰는 글자 서브셋 (M5)
+
+- 결정
+  - 일본어 글자는 Pretendard JP Regular(OFL 1.1)에서 가져온다. 원본은 `assets/fonts/source/PretendardJP-Regular.ttf`(5,462,268바이트)이고, 앱에 넣는 것은 서브셋 `assets/fonts/PretendardJP-Common.ttf`(2,012,212바이트)다.
+  - 남기는 글자: JIS X 0208 전체(가나, 기호, 제1·제2수준 한자 6,355자), 반각 가타카나, 전각 영숫자. 요청 7,002자 중 6,831자가 들어 있다. 빠진 것은 원본에 없는 수학·괘선 기호와 반각 가타카나다. (사용자 선택: 제1+제2수준. 제1수준만은 0.88MB이지만 2010년 추가 상용한자 약 70자가 빠진다.)
+  - 서브셋은 `npm run fonts`(fontTools, 개발 때만)로 만든다. 힌팅과 레이아웃 기능(GSUB/GPOS 규칙)은 넣지 않는다. 화면에 필요한 `cmap`을 남기기 위해 core의 `subsetter` 대신 fontTools를 쓴다.
+  - 글자마다 Pretendard에 있으면 Pretendard, 없으면 Pretendard JP, 둘 다 없으면 빈칸이고 저장할 때 알린다. Pretendard에도 가나가 있어 가나는 Pretendard로, 한자는 Pretendard JP로 그려진다. 두 폰트는 같은 계열이라 섞여도 어울리고 세로 수치(어센트 1949, 디센트 494 / 2048)가 같다.
+  - core는 쓰인 폰트만 각각 서브셋으로 넣는다(`FontSet`). 화면은 `font-family: PdfEditorText, PdfEditorTextJP`의 글자별 대체로 같은 결과를 낸다.
+- 이유: 일본어 사용자도 텍스트를 쓸 수 있어야 한다. 한자 전체(약 1.4만 자 이상)를 넣으면 exe가 많이 커진다. 화면 디자인과 같은 계열 폰트다.
+- 대안: Noto Sans JP(OFL)도 가능하지만 Pretendard와 모양이 다르고, Google Fonts 배포는 가변 폰트다.
+
+### D33. 텍스트 편집 방식 (M5)
+
+- 결정
+  - 텍스트 도구(T)로 클릭하면 그 자리에 `textarea`가 뜬다. 번들 폰트, 같은 크기, 줄 간격 1.3, 같은 회전, 커닝·합자 끔으로 그려 확정 전후의 모습이 같다. 클릭한 점이 첫 줄의 위쪽이다.
+  - Enter 줄바꿈, Ctrl+Enter나 바깥 클릭 확정, Esc 취소. 조합 중(`isComposing`)의 키는 입력기에 맡긴다.
+  - 확정 한 번이 Undo 한 칸이다. 빈 글자는 만들지 않고, 다시 편집에서 모두 지우면 객체를 지운다. 확정하면 선택 도구로 돌아가고 그 텍스트가 선택된다.
+  - 다시 편집은 선택 도구에서 더블클릭이다. 편집하는 동안 원래 객체는 숨긴다.
+  - 크기 조절 핸들은 없다. 선택 상자는 가장 긴 줄의 폭(캔버스 측정)과 폰트의 어센트·디센트로 그린다.
+  - 속성은 글자 크기(6~72pt)와 색(8색)이고 도구별로 기억한다(D29).
+- 이유: 브라우저 입력 상자가 한글·일본어 조합을 가장 정확하게 처리한다. 직접 그리는 편집기는 IME 처리를 다시 만들어야 한다.
+
 ## 미정
 
 | 항목 | 기본 제안 | 정할 시점 |
 |---|---|---|
 | 앱 이름과 식별자 | 가칭 `pdf-editor`, 식별자 `com.pdfeditor.app` | 공개 전. M0는 가칭으로 진행 |
 | 라이선스 | MIT | 공개 전 |
-| 일본어 텍스트 객체용 폰트 | 번들 폰트에 일본어 글리프가 거의 없다. 일본어 폰트(예: OFL 폰트)를 함께 넣으면 exe가 수 MB 커진다 | M5 계획 |
 
-확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31).
+확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31), 일본어 폰트(D32), 텍스트 편집(D33).
 ## 고정한 버전 (2026-11-13, M0·M1)
 
 정확한 버전으로 고정한다(`Cargo.toml`의 `=`, `package.json`의 정확한 버전). crates.io의 `tauri` 최신판은 3.0.0-alpha이므로 2.x를 명시한다.
@@ -297,6 +318,8 @@
 | 자산 | 버전 | 라이선스 |
 |---|---|---|
 | Pretendard Regular (TTF, `public/static/alternative/`) | 1.3.9 | OFL 1.1 (`assets/fonts/OFL.txt`) |
+| Pretendard JP Regular (TTF, `packages/pretendard-jp/dist/public/static/alternative/`, M5) | 1.3.9 (main 브랜치, 2026-11-23 내려받음) | OFL 1.1 (`assets/fonts/OFL-PretendardJP.txt`) |
+| fontTools (개발 때만, `npm run fonts`, M5) | 4.68.0 | MIT |
 
 - D4의 대안 qpdf 크레이트는 0.3.7이다(도입하지 않음).
 - `npm audit`: 실행 의존성은 0건이다. 개발 의존성에는 eslint → minimatch에서 moderate 10건이 있다.

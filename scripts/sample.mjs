@@ -7,6 +7,8 @@
 //   ellipses, lines and arrows on pages rotated 0/90/180/270 (M3)
 // - out/m4_sample.pdf: the synthetic signature baked over Korean text and upright on pages
 //   rotated 0/90/180/270 and an image page, several times (M4)
+// - out/m5_sample.pdf: Korean, English and Japanese text in several sizes and colors on
+//   pages rotated 0/90/180/270, with one character outside the bundled fonts (M5)
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -124,6 +126,32 @@ for (const p of m4.pages.slice(1)) p.objects = [placeSig(p, 200, 200, 140), plac
 writeFileSync("out/m4_sample.model.json", JSON.stringify(m4, null, 2));
 cli(["export", "--model", "out/m4_sample.model.json", "--out", "out/m4_sample.pdf", "--signatures", "tests/fixtures/signatures"]);
 
+// M5: text objects as the text tool makes them (upright: rotation = display rotation).
+const m5 = cli(["model", "tests/fixtures/rotated.pdf"], true);
+m5.pages = m5.pages.filter((p) => p.pageIndex < 4);
+const BLACK = [0, 0, 0];
+let textN = 0;
+const textAt = (p, x, y, fontSize, color, lines) => ({
+  type: "text",
+  id: `text-${++textN}`,
+  origin: { x: p.box.x0 + x, y: p.box.y0 + y },
+  rotation: (p.baseRotation + p.userRotation) % 360,
+  fontSize,
+  color,
+  lines,
+});
+for (const p of m5.pages) {
+  p.objects = [
+    textAt(p, 60, 520, 12, BLACK, ["한글 텍스트와 English text", "日本語のテキスト：ひらがな、カタカナ、漢字"]),
+    textAt(p, 60, 440, 24, RED, ["큰 글자 大きい文字"]),
+    textAt(p, 60, 380, 8, BLUE, ["작은 글자 8pt · 小さい文字 · small text"]),
+  ];
+}
+// One rare character (U+2000B) outside the bundled fonts: the export warns about it.
+m5.pages[0].objects.push(textAt(m5.pages[0], 60, 300, 14, GREEN, ["없는 글자 → 𠀋 ←"]));
+writeFileSync("out/m5_sample.model.json", JSON.stringify(m5, null, 2));
+cli(["export", "--model", "out/m5_sample.model.json", "--out", "out/m5_sample.pdf"]);
+
 const order = model.pages
   .map((p, i) => {
     const name = Object.keys(src).find((k) => src[k] === p.sourceId);
@@ -168,4 +196,15 @@ out/m4_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
   3. In Acrobat Reader and Edge the signatures cannot be selected, moved or deleted as
      comments/annotations: they are part of the page.
   4. All three viewers show the same picture.
+
+out/m5_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
+  1. Pages 1-4 (rotated 0, 90, 180, 270): three texts each, upright when the page is read
+     the right way up: mixed Korean/English, Japanese (kana and kanji), a large red and a
+     small blue line. The Korean and Japanese glyphs look like one family.
+  2. Page 1 also has "없는 글자 → ? ←": the rare character is a blank (the export reported
+     it as missing; the CLI printed a missing_glyphs warning above).
+  3. Selecting and copying each text gives the original text (Japanese included).
+  4. In Acrobat Reader and Edge each text is a text box comment that can be moved and
+     deleted.
+  5. All three viewers show the same picture.
 `);

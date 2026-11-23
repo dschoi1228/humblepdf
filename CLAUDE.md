@@ -15,7 +15,7 @@ Windows 11용 오프라인 PDF 편집기다. 여러 PDF와 이미지의 병합, 
 | UI | React + TypeScript + Vite |
 | 페이지 렌더링 | PDF.js (`pdfjs-dist`), 프런트엔드에서 실행 |
 | 코어 | Rust. PDF 읽기·쓰기 `lopdf`, 폰트 서브셋 `subsetter`, 이미지 `image` |
-| 번들 폰트 | Pretendard Regular (TTF, OFL 1.1) |
+| 번들 폰트 | Pretendard Regular, Pretendard JP 자주 쓰는 글자 서브셋 (TTF, OFL 1.1) |
 
 버전은 작업 시점의 최신 안정판을 직접 확인해 고정한다. 이 스택의 라이브러리는 API가 자주 바뀐다. 기억에 의존하지 말고 현재 문서를 확인한 뒤 코드를 쓴다.
 
@@ -53,7 +53,8 @@ npm run lint                 ESLint + tsc 타입 검사
 
 npm run fixtures             합성 fixture 재생성 (tests/fixtures/, 50MB 파일은 tests/fixtures/large/)
 npm run bindings             Rust 모델 → src/bindings/*.ts 재생성
-npm run sample               out/m0_sample.pdf, out/m2_sample.pdf, out/m3_sample.pdf, out/m4_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
+npm run sample               out/m0_sample.pdf, out/m2_sample.pdf ~ out/m5_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
+npm run fonts                일본어 폰트 서브셋 재생성 (assets/fonts/PretendardJP-Common.ttf). Python과 fontTools가 필요하다(개발 때만)
 cargo run -p pdf-editor-cli -- inspect <파일> [--password <pw>]
 cargo run -p pdf-editor-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
 cargo run -p pdf-editor-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]

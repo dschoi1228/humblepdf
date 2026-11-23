@@ -1,15 +1,16 @@
 # PDF Editor (working title)
 
 An offline PDF editor for Windows 11. It merges PDFs and images into one document, organizes
-pages, and (in later milestones) adds highlights, shapes, text and signature images. Edits are
-non-destructive: source files are never modified, and saving always writes a new PDF.
+pages, and adds highlights, shapes, text and signature images. Edits are non-destructive:
+source files are never modified, and saving always writes a new PDF.
 
 The UI is available in English, Korean and Japanese. It follows the Windows display language
 and can be changed from the toolbar.
 
-> **Status:** in development. Viewing, merging, page organization and saving work
-> (milestones M0–M2.5). Annotations, signatures and text are planned (M3–M6). See
-> [docs/SPEC.md](docs/SPEC.md) for the specification and milestones (in Korean).
+> **Status:** in development. Viewing, merging, page organization, annotations, signatures
+> and text work (milestones M0–M5). Reopening saved files for editing and flattened export
+> are next (M6). See [docs/SPEC.md](docs/SPEC.md) for the specification and milestones
+> (in Korean).
 
 ## Features
 
@@ -19,14 +20,15 @@ Working now:
 - Continuous scrolling viewer with thumbnails and zoom from 25% to 400%
 - Reorder pages by dragging thumbnails, select multiple pages, delete and rotate them, and
   choose how image pages fit (A4 or image size), with undo and redo
+- Highlights, rectangles, ellipses, lines and arrows, saved as standard PDF annotations
+- Text in Korean, English and Japanese, saved as FreeText annotations with embedded font
+  subsets
+- A signature library (PNG/JPG) and signature placement; signatures are baked into the page
 - Save as a new PDF. Saving over an open source file is refused
 - Fully offline: no network requests. Fonts and PDF.js assets are bundled
 
 Planned:
 
-- Highlights, rectangles, ellipses and arrows, saved as standard PDF annotations
-- Signature images baked into the page content
-- Text boxes with an embedded font subset
 - Reopening saved files for further editing, and flattened export
 
 ## Tech stack
@@ -37,7 +39,7 @@ Planned:
 | UI | React, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | Page rendering | [PDF.js](https://mozilla.github.io/pdf.js/) |
 | Core | Rust: `lopdf` (PDF read/write), `subsetter` (font subsetting), `image` |
-| Bundled font | Pretendard Regular (OFL 1.1) |
+| Bundled fonts | Pretendard Regular and Pretendard JP (common characters), OFL 1.1 |
 
 PDF bytes are produced only in the Rust core (`crates/core`). The frontend renders pages and
 handles the editing UI. The document model's source of truth is a set of Rust types; the
