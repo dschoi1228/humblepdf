@@ -22,3 +22,11 @@ node_modules/
 !.vscode/extensions.json
 .idea/
 .DS_Store
+
+# Files saved from the app while testing with fixtures (default save names)
+/tests/fixtures/*_편집.pdf
+/tests/fixtures/*_edited.pdf
+/tests/fixtures/*_編集.pdf
+/tests/fixtures/*_평탄화.pdf
+/tests/fixtures/*_flattened.pdf
+/tests/fixtures/*_平坦化.pdf
