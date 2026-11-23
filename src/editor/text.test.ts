@@ -4,7 +4,7 @@ import type { PageObject } from "../bindings/PageObject";
 import type { Rotation } from "../bindings/Rotation";
 import { shortcutFor } from "../app/shortcuts";
 import { LINE_HEIGHT } from "../shapes/spec";
-import { handlesOf, hitTest, moveObject, objectBounds, resizeObject } from "./geometry";
+import { handlesOf, hitTest, keepInside, moveObject, objectBounds, resizeObject } from "./geometry";
 import { linesOf, setTextMeasure, TEXT_ASCENT, TEXT_DESCENT, textBounds } from "./textLayout";
 import { propsOf, PALETTE, toolOf, withProps } from "./tools";
 
@@ -60,6 +60,20 @@ describe("editing a text", () => {
     const far = moveObject(text(0), 1000, 0, box) as Text;
     expect(textBounds(far).x1).toBeCloseTo(600, 9);
   });
+  it("a text that runs off the page is shifted back inside", () => {
+    // 55 characters of 10pt from x=100: 550pt wide, ends at 650 > 600.
+    const long = { ...text(0, ["x".repeat(55)]) };
+    const inside = keepInside(long, box) as Text;
+    expect(textBounds(inside).x1).toBeCloseTo(600, 9);
+    expect(textBounds(inside).x0).toBeCloseTo(50, 9);
+    // At 180 degrees the text runs towards -x: the same rule applies.
+    const r180 = keepInside({ ...text(180, ["x".repeat(20)]), origin: { x: 100, y: 500 } }, box) as Text;
+    expect(textBounds(r180).x0).toBeCloseTo(0, 9);
+    // Already inside: unchanged.
+    const ok = text(0);
+    expect(keepInside(ok, box)).toBe(ok);
+  });
+
   it("has no handles and cannot be resized", () => {
     const t = text(0);
     expect(handlesOf(t)).toEqual([]);

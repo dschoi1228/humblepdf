@@ -147,6 +147,27 @@ test("cancel, commit by clicking outside, edit again, properties, move, delete, 
   expect(w.consoleProblems).toEqual([]);
 });
 
+test("text typed near the page edge is kept on the page", async ({ page }) => {
+  await open(page, ["rotated.pdf"]);
+  for (const index of [0, 2]) {
+    await showPage(page, index);
+    const p = (await model(page)).pages[index];
+    const el = page.locator(`[data-testid=page][data-page-index="${index}"]`);
+    const pb = (await el.boundingBox())!;
+    // A click 40px from the right edge of the page on screen.
+    await page.keyboard.press("KeyT");
+    await page.mouse.click(pb.x + pb.width - 40, pb.y + pb.height / 2);
+    await page.keyboard.type("페이지 끝에서 시작한 긴 텍스트 long text 日本語");
+    await page.keyboard.press("Control+Enter");
+    const [t] = await texts(page, index);
+    expect(t.rotation).toBe((p.baseRotation + p.userRotation) % 360);
+    const glyphs = el.locator(`[data-testid=object-layer] > [data-object-id="${t.id}"] text`);
+    const gb = (await glyphs.first().boundingBox())!;
+    expect(gb.x + gb.width, `page ${index + 1}: text right edge`).toBeLessThanOrEqual(pb.x + pb.width + 1);
+    expect(gb.x, `page ${index + 1}: text left edge`).toBeGreaterThanOrEqual(pb.x - 1);
+  }
+});
+
 test("composition: keys that finish a character stay with the input method", async ({ page }) => {
   await open(page, ["rotated.pdf"]);
   await showPage(page, 0);

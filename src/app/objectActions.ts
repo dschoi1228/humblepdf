@@ -3,7 +3,7 @@ import type { PageObject } from "../bindings/PageObject";
 import type { Rect } from "../bindings/Rect";
 import { displayRotation, deltaToUser, viewportTransform } from "../coords";
 import { useEditorStore } from "../editor/editorStore";
-import { moveObject } from "../editor/geometry";
+import { keepInside, moveObject } from "../editor/geometry";
 import { STICKY_TOOLS, toolOf, withProps, type DrawTool, type PropsPatch, type ToolProps } from "../editor/tools";
 import { useDocumentStore } from "../state/documentStore";
 import { addObject, deleteObject, findObject, updateObject } from "../state/objects";
@@ -38,7 +38,7 @@ export function setProps(patch: PropsPatch): void {
   const sel = selectedObject();
   if (sel) {
     const tool = toolOf(sel.object);
-    const next = withProps(sel.object, patch);
+    const next = keepInside(withProps(sel.object, patch), sel.box);
     if (next === sel.object) return;
     commitObject(sel.pageId, next);
     if (tool) editor.setToolProps(tool, patch as Partial<ToolProps[typeof tool]>);

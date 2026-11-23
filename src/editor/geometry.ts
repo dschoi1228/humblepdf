@@ -92,6 +92,14 @@ export function moveObject(o: PageObject, dx: number, dy: number, box: Rect): Pa
   return mapPoints(o, (p) => ({ x: p.x + cx, y: p.y + cy }));
 }
 
+/**
+ * Shifts an object that sticks out of the page back inside (SPEC 6.4). A text that grows
+ * while typed, or with a larger font size, would otherwise run off the page.
+ */
+export function keepInside(o: PageObject, box: Rect): PageObject {
+  return moveObject(o, 0, 0, box);
+}
+
 /** Handles of an editable object with their user-space positions. */
 export function handlesOf(o: PageObject): { handle: Handle; at: Point }[] {
   // Text is sized by its font size, not by handles (SPEC 6.7).

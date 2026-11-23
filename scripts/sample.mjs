@@ -131,10 +131,25 @@ const m5 = cli(["model", "tests/fixtures/rotated.pdf"], true);
 m5.pages = m5.pages.filter((p) => p.pageIndex < 4);
 const BLACK = [0, 0, 0];
 let textN = 0;
-const textAt = (p, x, y, fontSize, color, lines) => ({
+/** User-space point at (u, v) pt from the top-left of the page as displayed (rotated). */
+const screenPoint = (p, u, v) => {
+  const { x0, y0, x1, y1 } = p.box;
+  switch ((p.baseRotation + p.userRotation) % 360) {
+    case 90:
+      return { x: x0 + v, y: y0 + u };
+    case 180:
+      return { x: x1 - u, y: y0 + v };
+    case 270:
+      return { x: x1 - v, y: y1 - u };
+    default:
+      return { x: x0 + u, y: y1 - v };
+  }
+};
+// (u, v): baseline start measured on the displayed page, like a click with the text tool.
+const textAt = (p, u, v, fontSize, color, lines) => ({
   type: "text",
   id: `text-${++textN}`,
-  origin: { x: p.box.x0 + x, y: p.box.y0 + y },
+  origin: screenPoint(p, u, v),
   rotation: (p.baseRotation + p.userRotation) % 360,
   fontSize,
   color,
@@ -142,13 +157,13 @@ const textAt = (p, x, y, fontSize, color, lines) => ({
 });
 for (const p of m5.pages) {
   p.objects = [
-    textAt(p, 60, 520, 12, BLACK, ["한글 텍스트와 English text", "日本語のテキスト：ひらがな、カタカナ、漢字"]),
-    textAt(p, 60, 440, 24, RED, ["큰 글자 大きい文字"]),
-    textAt(p, 60, 380, 8, BLUE, ["작은 글자 8pt · 小さい文字 · small text"]),
+    textAt(p, 60, 120, 12, BLACK, ["한글 텍스트와 English text", "日本語のテキスト：ひらがな、カタカナ、漢字"]),
+    textAt(p, 60, 200, 24, RED, ["큰 글자 大きい文字"]),
+    textAt(p, 60, 250, 8, BLUE, ["작은 글자 8pt · 小さい文字 · small text"]),
   ];
 }
 // One rare character (U+2000B) outside the bundled fonts: the export warns about it.
-m5.pages[0].objects.push(textAt(m5.pages[0], 60, 300, 14, GREEN, ["없는 글자 → 𠀋 ←"]));
+m5.pages[0].objects.push(textAt(m5.pages[0], 60, 320, 14, GREEN, ["없는 글자 → 𠀋 ←"]));
 writeFileSync("out/m5_sample.model.json", JSON.stringify(m5, null, 2));
 cli(["export", "--model", "out/m5_sample.model.json", "--out", "out/m5_sample.pdf"]);
 

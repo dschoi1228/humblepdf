@@ -7,6 +7,7 @@ import type { PageObject } from "../bindings/PageObject";
 import { displayRotation, toScreen, type PageTransform } from "../coords";
 import { useEditorStore, type TextEditing } from "../editor/editorStore";
 import { TEXT_FONT_FAMILY } from "../editor/fonts";
+import { keepInside } from "../editor/geometry";
 import { lineWidth, linesOf, TEXT_ASCENT, TEXT_DESCENT } from "../editor/textLayout";
 import { LINE_HEIGHT } from "../shapes/spec";
 import { useDocumentStore } from "../state/documentStore";
@@ -26,9 +27,10 @@ function commit(page: Page, editing: TextEditing, existing: Text | undefined, va
     if (existing) store.apply((d) => deleteObject(d, page.id, existing.id));
     return;
   }
-  const object: Text = existing
+  const typed: Text = existing
     ? { ...existing, lines }
     : { type: "text", id: crypto.randomUUID(), origin: editing.origin, rotation: editing.rotation, ...style, lines };
+  const object = keepInside(typed, page.box) as Text;
   store.apply((d) => (existing ? updateObject(d, page.id, object) : addObject(d, page.id, object)));
   editor.setTool("select");
   editor.select({ pageId: page.id, objectId: object.id });
