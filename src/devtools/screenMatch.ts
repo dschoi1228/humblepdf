@@ -2,7 +2,8 @@
 // For one page it renders (a) the source page, (b) the source page + SVG overlay of the
 // model objects, (c) the exported page, and returns the bounding boxes of what (b) and (c)
 // add on top of (a).
-import { TEXT_FONT_URLS } from "../editor/fonts";
+import jpFontUrl from "../../assets/fonts/PretendardJP-Common.ttf?url";
+import mainFontUrl from "../../assets/fonts/Pretendard-Regular.ttf?url";
 import type { PageObject } from "../bindings/PageObject";
 import type { Rotation } from "../bindings/Rotation";
 import { viewportTransform } from "../coords";
@@ -81,7 +82,7 @@ export async function measurePage(args: {
   objects: PageObject[];
   signatureUrls: Record<string, string>;
 }): Promise<MatchResult> {
-  fontDataUrls ??= Promise.all([toDataUrl(TEXT_FONT_URLS.main, "font/ttf"), toDataUrl(TEXT_FONT_URLS.jp, "font/ttf")]);
+  fontDataUrls ??= Promise.all([toDataUrl(mainFontUrl, "font/ttf"), toDataUrl(jpFontUrl, "font/ttf")]);
   const [font, fontJp] = await fontDataUrls;
   const sigs: Record<string, string> = {};
   for (const [id, url] of Object.entries(args.signatureUrls)) sigs[id] = await toDataUrl(url, "image/png");

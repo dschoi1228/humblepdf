@@ -61,6 +61,8 @@ export interface Backend {
   signatureDelete(id: string): Promise<void>;
   /** The stored PNG. */
   signatureBytes(id: string): Promise<Uint8Array>;
+  /** A bundled font file ("main" = Pretendard, "jp" = Pretendard JP), D39. */
+  fontBytes(name: "main" | "jp"): Promise<Uint8Array>;
   /** Sets the window title (follows the UI language, D27). */
   setTitle(title: string): Promise<void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */

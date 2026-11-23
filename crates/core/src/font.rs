@@ -21,6 +21,16 @@ pub const BUNDLED_FONT_NAME: &str = "Pretendard-Regular";
 pub static JP_FONT: &[u8] = include_bytes!("../../../assets/fonts/PretendardJP-Common.ttf");
 pub const JP_FONT_NAME: &str = "PretendardJP-Common";
 
+/// The bundled font files by name ("main" or "jp"), for the frontend to load as web fonts
+/// (D39): the app carries each font once, in the core.
+pub fn bundled_font(name: &str) -> Option<&'static [u8]> {
+    match name {
+        "main" => Some(BUNDLED_FONT),
+        "jp" => Some(JP_FONT),
+        _ => None,
+    }
+}
+
 /// Collects the glyphs used by a document and writes the subset font once.
 pub struct FontSubsetBuilder<'a> {
     data: &'a [u8],

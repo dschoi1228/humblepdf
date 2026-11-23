@@ -82,6 +82,10 @@ export const tauriBackend: Backend = {
     return new Uint8Array(buf);
   },
 
+  async fontBytes(name) {
+    return new Uint8Array(await invoke<ArrayBuffer>("bundled_font", { name }));
+  },
+
   async setTitle(title) {
     document.title = title;
     await getCurrentWindow().setTitle(title);

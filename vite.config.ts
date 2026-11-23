@@ -16,6 +16,8 @@ function serveTestFiles(): Plugin {
   const mounts: Record<string, string> = {
     "/__fixtures/": resolve("tests/fixtures"),
     "/__out/": resolve("out"),
+    // Bundled fonts for browser mode; the app gets them from the core (D39).
+    "/__fonts/": resolve("assets/fonts"),
   };
   return {
     name: "serve-test-files",
@@ -181,6 +183,8 @@ function exportRoute(): Plugin {
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss(), serveTestFiles(), exportRoute()],
+  // The app version shown in the About dialog (package.json, kept equal to Cargo.toml).
+  define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync("package.json", "utf8")).version) },
   resolve: { alias: { "@": resolve("src") } },
   // Keep Rust errors visible when run by `tauri dev`.
   clearScreen: false,

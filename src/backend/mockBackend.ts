@@ -209,6 +209,11 @@ export const mockBackend: Backend = {
   signatureDelete: mockSignatureDelete,
   signatureBytes: mockSignatureBytes,
 
+  async fontBytes(name) {
+    // Dev server only (/__fonts/ serves assets/fonts).
+    return fetchBytes(name === "jp" ? "/__fonts/PretendardJP-Common.ttf" : "/__fonts/Pretendard-Regular.ttf");
+  },
+
   async setTitle(title) {
     document.title = title;
   },

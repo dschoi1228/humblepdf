@@ -11,6 +11,8 @@ import {
   RotateCw,
   Save,
   SaveAll,
+  CircleHelp,
+  Info,
   Layers,
   Scan,
   Trash2,
@@ -26,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocumentStore } from "../state/documentStore";
 import { Divider, IconButton } from "./IconButton";
+import { useInfoDialogs } from "../app/dialogs";
 import { useViewStore } from "../state/viewStore";
 import { LOCALE_NAMES, LOCALES, useLocaleStore, useStrings, type Locale } from "../i18n";
 import { MAX_SCALE, MIN_SCALE } from "../viewer/layout";
@@ -182,6 +185,12 @@ export function Toolbar() {
       <div className="ml-auto flex items-center gap-3 pr-2">
         <PageNumberInput />
         <Divider />
+        <IconButton label={t.help.open} onClick={() => useInfoDialogs.setState({ help: true })} testId="open-help">
+          <CircleHelp />
+        </IconButton>
+        <IconButton label={t.about.open} onClick={() => useInfoDialogs.setState({ about: true })} testId="open-about">
+          <Info />
+        </IconButton>
         <LanguagePicker />
       </div>
     </header>

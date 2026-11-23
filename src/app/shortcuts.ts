@@ -14,6 +14,7 @@ export type ShortcutAction =
   | "rotateLeft"
   | "rotateRight"
   | "escape"
+  | "help"
   | "copy"
   | "paste"
   | "duplicate"
@@ -38,6 +39,7 @@ export function shortcutFor(e: KeyLike): ShortcutAction | null {
   if (!ctrl) {
     if (e.code === "Delete" && !e.shiftKey) return "delete";
     if (e.code === "Escape") return "escape";
+    if (e.code === "F1" && !e.shiftKey) return "help";
     const arrow = ARROWS[e.code];
     if (arrow) {
       const step = e.shiftKey ? NUDGE_LARGE : 1;

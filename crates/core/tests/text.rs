@@ -344,3 +344,11 @@ fn the_japanese_font_has_the_common_characters() {
     assert_eq!(set.font_for('漢'), 1);
     assert_eq!(set.font_for(' '), 0);
 }
+
+#[test]
+fn the_frontend_gets_the_same_font_bytes() {
+    use humblepdf_core::font::{BUNDLED_FONT, bundled_font};
+    assert_eq!(bundled_font("main"), Some(BUNDLED_FONT));
+    assert_eq!(bundled_font("jp"), Some(JP_FONT));
+    assert_eq!(bundled_font("other"), None);
+}

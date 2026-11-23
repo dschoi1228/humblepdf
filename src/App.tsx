@@ -12,7 +12,10 @@ import {
 import { useEditorStore } from "./editor/editorStore";
 import { EditBar } from "./components/EditBar";
 import { SignatureDialog } from "./components/SignatureDialog";
+import { AboutDialog, HelpDialog } from "./components/InfoDialogs";
+import { useInfoDialogs } from "./app/dialogs";
 import { chooseTool } from "./app/toolActions";
+import { startPreferenceSync } from "./app/preferencesSync";
 import { useSignatureStore } from "./signatures/signatureStore";
 import { loadTextFonts, TEXT_FONT_FAMILY } from "./editor/fonts";
 import { canvasMeasure, setTextMeasure } from "./editor/textLayout";
@@ -70,6 +73,9 @@ function runShortcut(action: ShortcutAction): boolean {
       return pasteObject();
     case "duplicate":
       return duplicateSelectedObject();
+    case "help":
+      useInfoDialogs.setState({ help: true });
+      return true;
     case "escape":
       if (editor.tool !== "select") editor.setTool("select");
       else if (editor.selected) editor.select(null);
@@ -146,6 +152,7 @@ export default function App() {
     // StrictMode runs effects twice; the startup hooks must run once.
     if (!started.current) {
       started.current = true;
+      startPreferenceSync();
       // Text objects are measured with the bundled fonts once they are loaded (D32).
       void loadTextFonts().then(() => setTextMeasure(canvasMeasure(TEXT_FONT_FAMILY)));
       void useSignatureStore
@@ -196,6 +203,8 @@ export default function App() {
       <SavingDialog />
       <UnsavedDialog />
       <SignatureDialog />
+      <HelpDialog />
+      <AboutDialog />
       <Toaster position="bottom-right" richColors closeButton />
     </TooltipProvider>
   );

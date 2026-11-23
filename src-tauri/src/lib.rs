@@ -229,6 +229,17 @@ async fn signature_bytes(id: String, app: AppHandle) -> Result<Response, ErrorPa
     blocking(move || signatures::bytes(&dir, &id).map(Response::new)).await
 }
 
+/// A bundled font for the frontend's web fonts (D39), as a binary response.
+#[tauri::command]
+fn bundled_font(name: String) -> Result<Response, ErrorPayload> {
+    humblepdf_core::font::bundled_font(&name)
+        .map(|b| Response::new(b.to_vec()))
+        .ok_or(ErrorPayload {
+            code: "internal",
+            message: format!("no bundled font {name}"),
+        })
+}
+
 /// M0 measurement hook: when HUMBLEPDF_BENCH is set to a PDF path, the frontend opens it,
 /// reports the time to first page through `bench_report`, and the app exits.
 #[tauri::command]
@@ -253,6 +264,8 @@ fn bench_report(report: String, app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Window position, size and maximized state are restored at start (D38).
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Sources::default())
         .invoke_handler(tauri::generate_handler![
             open_source,
@@ -263,6 +276,7 @@ pub fn run() {
             signature_rename,
             signature_delete,
             signature_bytes,
+            bundled_font,
             bench_config,
             bench_report
         ])
