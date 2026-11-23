@@ -1,5 +1,7 @@
 //! Tauri shell. Commands stay thin: they call pdf-editor-core and do file I/O.
 
+mod signatures;
+
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
@@ -12,7 +14,7 @@ use pdf_editor_core::model::Document;
 use pdf_editor_core::source::{self, SourceInfo};
 use serde::Serialize;
 use tauri::ipc::Response;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 /// Sources opened in this session. Passwords live only here, in memory (SPEC 4).
 #[derive(Default)]
@@ -105,10 +107,13 @@ async fn export_document(
     model: Document,
     out_path: String,
     passwords: HashMap<String, String>,
+    app: AppHandle,
 ) -> Result<ExportSummary, ErrorPayload> {
+    let signature_dir = signature_dir(&app)?;
     let job = move || {
         let ctx = ExportContext {
             passwords,
+            signature_dir: Some(signature_dir),
             ..Default::default()
         };
         guarded(|| export::export_to_file(&model, &ctx, &PathBuf::from(&out_path)))
@@ -119,6 +124,75 @@ async fn export_document(
             code: "internal",
             message: "export task failed".into(),
         })?
+}
+
+/// The signature library folder: %APPDATA%<identifier>signatures (D30).
+fn signature_dir(app: &AppHandle) -> Result<PathBuf, ErrorPayload> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("signatures"))
+        .map_err(|e| ErrorPayload {
+            code: "io",
+            message: format!("no app data folder: {e}"),
+        })
+}
+
+/// Runs blocking library work off the main thread (normalizing a large image takes time).
+async fn blocking<T: Send + 'static>(
+    job: impl FnOnce() -> Result<T, ErrorPayload> + Send + 'static,
+) -> Result<T, ErrorPayload> {
+    tauri::async_runtime::spawn_blocking(move || {
+        catch_unwind(AssertUnwindSafe(job)).unwrap_or_else(|_| {
+            Err(ErrorPayload {
+                code: "internal",
+                message: "internal error".into(),
+            })
+        })
+    })
+    .await
+    .map_err(|_| ErrorPayload {
+        code: "internal",
+        message: "task failed".into(),
+    })?
+}
+
+#[tauri::command]
+async fn signature_list(app: AppHandle) -> Result<Vec<signatures::SignatureMeta>, ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::list(&dir)).await
+}
+
+#[tauri::command]
+async fn signature_add(
+    path: String,
+    name: String,
+    app: AppHandle,
+) -> Result<signatures::SignatureMeta, ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::add(&dir, &PathBuf::from(path), &name)).await
+}
+
+#[tauri::command]
+async fn signature_rename(
+    id: String,
+    name: String,
+    app: AppHandle,
+) -> Result<signatures::SignatureMeta, ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::rename(&dir, &id, &name)).await
+}
+
+#[tauri::command]
+async fn signature_delete(id: String, app: AppHandle) -> Result<(), ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::delete(&dir, &id)).await
+}
+
+/// The stored PNG, as a binary response (SPEC 3).
+#[tauri::command]
+async fn signature_bytes(id: String, app: AppHandle) -> Result<Response, ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::bytes(&dir, &id).map(Response::new)).await
 }
 
 /// M0 measurement hook: when PDF_EDITOR_BENCH is set to a PDF path, the frontend opens it,
@@ -150,6 +224,11 @@ pub fn run() {
             open_source,
             source_bytes,
             export_document,
+            signature_list,
+            signature_add,
+            signature_rename,
+            signature_delete,
+            signature_bytes,
             bench_config,
             bench_report
         ])
