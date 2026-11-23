@@ -123,6 +123,15 @@ test("the editor overlay matches the saved PDF within 1px on rotated pages", asy
     await page.mouse.click(s.x, s.y);
     await expect(page.locator(`[data-testid=page][data-page-index="${index}"] [data-testid=object-layer] > [data-object-type=signature]`)).toHaveCount(1);
     await page.keyboard.press("Escape");
+    // Text in Korean, English and Japanese (M5): two lines, both fonts.
+    await page.keyboard.press("KeyT");
+    const t = await client(page, index, P(60, 375));
+    await page.mouse.click(t.x, t.y);
+    await page.keyboard.type("한글 Text 日本語");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("カタカナ 漢字");
+    await page.keyboard.press("Control+Enter");
+    await expect(page.getByTestId("text-editor")).toHaveCount(0);
     shots.push(await shoot(page, index, true));
   }
   await save(page, "/__out/m3/match/editor.pdf", "editor.pdf");
