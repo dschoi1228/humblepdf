@@ -9,10 +9,10 @@ source files are never modified, and saving always writes a new PDF.
 The UI is available in English, Korean and Japanese. It follows the Windows display language
 and can be changed from the toolbar.
 
-> **Status:** in development. Viewing, merging, page organization, annotations, signatures
-> and text work (milestones M0–M5). Reopening saved files for editing and flattened export
-> are next (M6). See [docs/SPEC.md](docs/SPEC.md) for the specification and milestones
-> (in Korean).
+> **Status:** in development. Viewing, merging, page organization, annotations, signatures,
+> text, reopening saved files for editing and flattened export work (milestones M0–M6).
+> Finishing and release preparation are next (M7). See [docs/SPEC.md](docs/SPEC.md) for the
+> specification and milestones (in Korean).
 
 ## Features
 
@@ -26,12 +26,15 @@ Working now:
 - Text in Korean, English and Japanese, saved as FreeText annotations with embedded font
   subsets
 - A signature library (PNG/JPG) and signature placement; signatures are baked into the page
+- Copy, paste and duplicate objects
 - Save as a new PDF. Saving over an open source file is refused
+- Reopen a file saved by HumblePDF: its highlights, shapes and text come back editable
+- Export a flattened copy with every object baked into the pages
 - Fully offline: no network requests. Fonts and PDF.js assets are bundled
 
 Planned:
 
-- Reopening saved files for further editing, and flattened export
+- Finishing touches and release preparation (license, notices, CI, portable release)
 
 ## Tech stack
 
