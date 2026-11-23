@@ -16,8 +16,9 @@ mkdirSync(outDir, { recursive: true });
 type Box = { x0: number; y0: number; x1: number; y1: number };
 type Match = { overlay: Box | null; exported: Box | null; dark?: { count: number; kept: number; keptExported: number }; images: { exported: string } };
 
+/** Opens the files at 100% zoom, with the demo signature in the library (M4). */
 async function openAt100(page: Page, files: string[]) {
-  await page.goto(`/?open=${files.map(fixtureUrl).join(",")}`);
+  await page.goto(`/?open=${files.map(fixtureUrl).join(",")}&signatures=/__fixtures/signatures/sig-demo.png`);
   await waitForRenders(page);
   const view = page.getByTestId("page-view");
   for (let i = 0; i < 20; i++) {
@@ -116,6 +117,11 @@ test("the editor overlay matches the saved PDF within 1px on rotated pages", asy
     await page.getByTestId("fill-green").click();
     await page.keyboard.press("KeyA");
     await drag(page, index, P(70, 60), P(330, 100));
+    // A baked signature (M4), placed upright for the page's rotation.
+    await page.keyboard.press("KeyS");
+    const s = await client(page, index, P(420, 320));
+    await page.mouse.click(s.x, s.y);
+    await expect(page.locator(`[data-testid=page][data-page-index="${index}"] [data-object-type=signature]`)).toHaveCount(1);
     shots.push(await shoot(page, index, true));
   }
   await save(page, "/__out/m3/match/editor.pdf", "editor.pdf");
@@ -180,6 +186,42 @@ test("text under a highlight stays dark on screen and in the saved PDF", async (
   expect(r.dark!.count, "the region must contain text").toBeGreaterThan(200);
   expect(r.dark!.kept / r.dark!.count, "text pixels kept dark on screen").toBeGreaterThan(0.95);
   expect(r.dark!.keptExported / r.dark!.count, "text pixels kept dark in the saved PDF").toBeGreaterThan(0.95);
+  const diff = Math.max(...(["x0", "y0", "x1", "y1"] as const).map((k) => Math.abs(r.overlay![k] - r.exported![k])));
+  expect(diff).toBeLessThanOrEqual(TOLERANCE_PX);
+});
+
+test("text under a signature's transparent background stays visible on screen and in the saved PDF", async ({ page }) => {
+  await openAt100(page, ["korean_embedded.pdf"]);
+  const box = (await page.evaluate(() => window.__viewer!.model())).pages[0].box;
+  // Centered on the first text line of the fixture.
+  await page.keyboard.press("KeyS");
+  const at = await client(page, 0, { x: box.x0 + 180, y: box.y0 + 773 });
+  await page.mouse.click(at.x, at.y);
+  await expect(page.locator("[data-object-type=signature]").first()).toBeVisible();
+  const sig = (await page.evaluate(() => window.__viewer!.model())).pages[0].objects[0];
+  if (sig.type !== "signature") throw new Error("no signature");
+  const pageShot = await shoot(page, 0, false);
+  const overlayShot = await shoot(page, 0, true);
+  await save(page, "/__out/m3/match/signature.pdf", "signature.pdf");
+
+  const el = (await pageEl(page, 0).boundingBox())!;
+  const a = await client(page, 0, { x: sig.rect.x0, y: sig.rect.y1 });
+  const b = await client(page, 0, { x: sig.rect.x1, y: sig.rect.y0 });
+  const region = { x0: a.x - el.x + 2, y0: a.y - el.y + 2, x1: b.x - el.x - 2, y1: b.y - el.y - 2 };
+  const r = await compare(page, {
+    sourceUrl: fixtureUrl("korean_embedded.pdf"),
+    sourcePage: 1,
+    exportedUrl: "/__out/m3/match/signature.pdf",
+    exportedPage: 1,
+    overlayShot,
+    pageShot,
+    darkRegion: region,
+  });
+  writeFileSync(join(outDir, "signature_editor.png"), pageShot);
+  writeFileSync(join(outDir, "signature_exported.png"), Buffer.from(r.images.exported.split(",")[1], "base64"));
+  expect(r.dark!.count, "the region must contain text").toBeGreaterThan(200);
+  expect(r.dark!.kept / r.dark!.count, "text pixels visible on screen").toBeGreaterThan(0.95);
+  expect(r.dark!.keptExported / r.dark!.count, "text pixels visible in the saved PDF").toBeGreaterThan(0.95);
   const diff = Math.max(...(["x0", "y0", "x1", "y1"] as const).map((k) => Math.abs(r.overlay![k] - r.exported![k])));
   expect(diff).toBeLessThanOrEqual(TOLERANCE_PX);
 });
