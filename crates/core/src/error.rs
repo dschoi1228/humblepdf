@@ -23,6 +23,8 @@ pub enum CoreError {
     Pdf(String),
     #[error("font error: {0}")]
     Font(String),
+    #[error("signature image not found: {0}")]
+    SignatureMissing(String),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -41,6 +43,7 @@ impl CoreError {
             CoreError::OutputIsSource => "output_is_source",
             CoreError::Pdf(_) => "pdf",
             CoreError::Font(_) => "font",
+            CoreError::SignatureMissing(_) => "signature_missing",
             CoreError::Io(_) => "io",
         }
     }

@@ -159,7 +159,13 @@ fn write_objects(
                     let img = match signature_images.get(&s.signature_id) {
                         Some(id) => *id,
                         None => {
-                            let bytes = std::fs::read(signature_path(ctx, &s.signature_id)?)?;
+                            let path = signature_path(ctx, &s.signature_id)?;
+                            let bytes = std::fs::read(&path).map_err(|e| match e.kind() {
+                                std::io::ErrorKind::NotFound => {
+                                    CoreError::SignatureMissing(s.signature_id.clone())
+                                }
+                                _ => CoreError::Io(e),
+                            })?;
                             let id = image::embed_image(doc, &bytes)?.id;
                             signature_images.insert(s.signature_id.clone(), id);
                             id
