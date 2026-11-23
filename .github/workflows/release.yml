@@ -1,0 +1,59 @@
+# A version tag (v*) builds the portable exe and creates a DRAFT GitHub release with the
+# exe, its SHA-256, the license and the third-party notices (D40). Publishing stays manual.
+# Run it by hand (workflow_dispatch) to build the files as an artifact without a release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - run: npm ci
+      - run: npm run notices
+      - run: npm run build:exe
+
+      - name: Collect the release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist-release | Out-Null
+          Copy-Item target/release/HumblePDF.exe, LICENSE, THIRD_PARTY_NOTICES.md dist-release/
+          $hash = (Get-FileHash dist-release/HumblePDF.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  HumblePDF.exe" | Out-File -Encoding ascii dist-release/HumblePDF.exe.sha256
+          Get-ChildItem dist-release
+
+      - name: Create a draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          gh release create $tag --draft --title "HumblePDF $tag" --notes "Portable Windows 11 build. Not code-signed: Windows SmartScreen may warn on first run (More info → Run anyway). Check the SHA-256 in HumblePDF.exe.sha256." (Get-ChildItem dist-release).FullName
+
+      - name: Upload the files (manual run)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: humblepdf-release-files
+          path: dist-release/
+          retention-days: 7

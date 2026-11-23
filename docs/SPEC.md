@@ -405,5 +405,11 @@ type Signature = { id: string; type: "signature"; signatureId: string; rect: Rec
 - 지금은 설치 프로그램 없이 exe 하나로 실행한다. WebView2는 Windows 11에 들어 있다.
 - 저장소는 처음부터 공개해도 되는 상태로 유지한다. 개인 파일과 비밀 값을 넣지 않고 의존성의 라이선스를 확인한다.
 - 공개 전에 상표 검색(KIPRIS)으로 "HumblePDF"를 확인한다(DECISIONS D34).
-- 공개 전에 할 일(M7): 라이선스 파일, 서드파티 고지(PDF.js Apache-2.0, Pretendard OFL 1.1 등), README, CI(fmt, clippy, 테스트, 빌드), 릴리스 워크플로(포터블 exe).
+- 공개 준비(M7에서 갖춤, DECISIONS D40)
+  - 라이선스: MIT(`LICENSE`).
+  - 서드파티 고지: `THIRD_PARTY_NOTICES.md`. `npm run notices`가 exe에 들어가는 Rust 크레이트, npm 런타임 패키지, 번들 폰트를 모아 라이선스 원문과 함께 만든다. 허용 목록 밖의 라이선스가 있으면 실패한다.
+  - README: 다운로드와 SmartScreen 안내, 앱이 저장하는 위치, 기능, 빌드·테스트.
+  - CI: push·PR마다 fmt, clippy, `cargo test`, lint, 단위 테스트, E2E(`.github/workflows/ci.yml`).
+  - 릴리스: `v*` 태그로 exe·해시·라이선스·고지를 담은 초안 릴리스를 만든다(`.github/workflows/release.yml`). 공개는 사람이 한다.
+  - 사람 확인과 릴리스 절차: `docs/RELEASE_CHECKLIST.md`.
 - 후순위: 설치 프로그램, 코드 서명(서명이 없는 exe는 Windows SmartScreen 경고가 뜬다), 자동 업데이트.

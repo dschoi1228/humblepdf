@@ -17,6 +17,7 @@
     "fixtures": "cargo run -q -p humblepdf-core --example gen_fixtures --release -- --large",
     "sample": "node scripts/sample.mjs",
     "fonts": "node scripts/fonts.mjs",
+    "notices": "node scripts/notices.mjs",
     "test": "vitest run",
     "e2e": "playwright test",
     "lint": "eslint . && tsc -b --noEmit"

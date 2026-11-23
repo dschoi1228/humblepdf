@@ -321,12 +321,38 @@
 - 결정: 툴바에 "평탄화하여 내보내기" 버튼을 둔다. 저장 대화상자는 같고 기본 이름 접미사는 `_평탄화`/`_flattened`/`_平坦化`다. 결과는 Ctrl+S 대상과 "저장하지 않은 변경" 상태를 바꾸지 않는다. 알림에 "다시 열어도 편집할 수 없다"를 붙인다.
 - 이유: 평탄화한 파일은 다시 편집할 수 없다. 저장으로 치면 다음 Ctrl+S가 편집 가능한 파일 대신 평탄화 파일을 덮어쓰게 된다.
 
-## 미정
-| 항목 | 기본 제안 | 정할 시점 |
-|---|---|---|
-| 라이선스 | MIT | 공개 전 |
+### D38. 설정 유지 (M7)
 
-확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31), 일본어 폰트(D32), 텍스트 편집(D33), 앱 이름(D34), 객체 복사(D35), 다시 열기(D36), 평탄화 내보내기(D37).
+- 결정
+  - 창 위치·크기·최대화: Tauri 공식 플러그인 `tauri-plugin-window-state` 2.5.0(MIT OR Apache-2.0)이 앱을 닫을 때 저장하고 열 때 되살린다(앱 설정 폴더).
+  - 최근 설정: 도구별 속성(색, 두께, 불투명도, 글자 크기), 썸네일 패널 열림, 줌 방식(사용자 배율 포함)을 WebView `localStorage`의 `humblepdf.preferences.v1`에 둔다. 바뀐 뒤 0.3초에 쓴다.
+  - 읽을 때 값마다 검사한다(색 범위, 두께 0.5~12, 불투명도, 글자 크기 6~72, 선과 채움이 둘 다 없는 도형 등). 틀린 부분만 기본값으로 바꾼다.
+  - 문서, 경로, 서명 같은 개인 데이터는 넣지 않는다.
+- 이유: 공식 플러그인이 다중 모니터와 최대화 처리를 맡는다. 최근 설정은 언어 선택(D27)과 같은 저장소를 써 구조를 늘리지 않는다.
+
+### D39. 번들 폰트는 core에만 (M7)
+
+- 결정: 프런트엔드는 폰트 파일을 자산으로 넣지 않고, Tauri 명령 `bundled_font`로 core의 `include_bytes!` 바이트를 받아 `FontFace`로 등록한다. 브라우저 모드는 개발 서버 `/__fonts/`에서 받는다. 개발 전용 화면 일치 측정 도구만 자산 URL을 쓴다.
+- 이유: 두 폰트(4.7MB)가 exe에 두 번 들어가 있었다. 같은 바이트를 쓰므로 화면과 출력의 폰트가 확실히 같다.
+
+### D40. 공개 준비 (M7)
+
+- 결정
+  - 라이선스는 MIT(사용자 선택). 저작권 표기는 "HumblePDF contributors"(CLAUDE.md 규칙 8: 사용자 이름을 저장소에 넣지 않는다).
+  - `THIRD_PARTY_NOTICES.md`는 `npm run notices`(`scripts/notices.mjs`)가 만든다. exe에 들어가는 Rust 크레이트(앱 패키지에서 일반 의존성으로 닿는 것, Windows 대상), npm 런타임 패키지(package-lock에서 개발용·선택 설치 제외), 번들 폰트를 모으고, 패키지의 라이선스 파일 원문을 같은 원문끼리 묶어 싣는다. 2026-11-23 기준 360개, 약 630KB다.
+  - 허용 목록 밖 라이선스가 있으면 스크립트가 실패한다. MPL-2.0은 Tauri가 끌어오는 크레이트 5개(cssparser, cssparser-macros, selectors, dtoa-short, option-ext)에만 예외로 허용한다(사용자 결정). 고치지 않고 쓰며, 고지에 소스 위치(crates.io)를 적는다. MPL-2.0은 파일 단위 카피레프트라 앱 코드(MIT)에 영향이 없다.
+  - CI(`.github/workflows/ci.yml`): windows-latest에서 push·PR마다 fmt, clippy, `cargo test`, lint, 단위 테스트, E2E(설치된 Edge). 실패하면 Playwright 결과를 아티팩트로 남긴다. 사용자 선택: E2E 포함.
+  - 릴리스(`.github/workflows/release.yml`): `v*` 태그로 exe를 빌드하고 `gh release create --draft`로 exe, SHA-256, LICENSE, 고지를 올린다. 공개(Publish)는 사람이 한다. 수동 실행은 파일을 아티팩트로만 만든다. 사용자 선택: 태그 시 자동 초안.
+  - 액션은 공식 `actions/*`만 커밋 해시로 고정해 쓰고, 릴리스는 러너에 있는 `gh`로 만든다.
+  - 앱 안의 정보 대화상자: 버전, 라이선스, 오프라인 동작, 폰트·PDF.js 출처, 고지 파일 안내.
+- 이유: 공개 저장소와 배포 파일이 라이선스 의무(저작권 고지 포함)를 지키고, 같은 검증을 사람이 아닌 CI가 매번 돌리게 한다.
+
+## 미정
+
+없음. 정할 일이 생기면 여기에 표로 적는다.
+
+확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31), 일본어 폰트(D32), 텍스트 편집(D33), 앱 이름(D34), 객체 복사(D35), 다시 열기(D36), 평탄화 내보내기(D37), 설정 유지(D38), 폰트 한 번(D39), 공개 준비와 라이선스(D40).
+
 ## 고정한 버전 (2026-11-13, M0·M1)
 
 정확한 버전으로 고정한다(`Cargo.toml`의 `=`, `package.json`의 정확한 버전). crates.io의 `tauri` 최신판은 3.0.0-alpha이므로 2.x를 명시한다.
@@ -361,6 +387,8 @@
 | Pretendard Regular (TTF, `public/static/alternative/`) | 1.3.9 | OFL 1.1 (`assets/fonts/OFL.txt`) |
 | Pretendard JP Regular (TTF, `packages/pretendard-jp/dist/public/static/alternative/`, M5) | 1.3.9 (main 브랜치, 2026-11-23 내려받음) | OFL 1.1 (`assets/fonts/OFL-PretendardJP.txt`) |
 | fontTools (개발 때만, `npm run fonts`, M5) | 4.68.0 | MIT |
+| tauri-plugin-window-state (M7) | 2.5.0 | MIT OR Apache-2.0 |
+| GitHub Actions: actions/checkout, setup-node, cache, upload-artifact (M7, 커밋 해시 고정) | 7.0.1, 7.1.0, 6.1.0, 7.0.2 | MIT |
 
 - D4의 대안 qpdf 크레이트는 0.3.7이다(도입하지 않음).
 - `npm audit`: 실행 의존성은 0건이다. 개발 의존성에는 eslint → minimatch에서 moderate 10건이 있다.

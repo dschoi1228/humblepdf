@@ -55,6 +55,7 @@ npm run lint                 ESLint + tsc 타입 검사
 npm run fixtures             합성 fixture 재생성 (tests/fixtures/, 50MB 파일은 tests/fixtures/large/)
 npm run bindings             Rust 모델 → src/bindings/*.ts 재생성
 npm run sample               out/m0_sample.pdf, out/m2_sample.pdf ~ out/m5_sample.pdf, out/m6_reopened.pdf, out/m6_flattened.pdf 생성 (사람 확인용, 확인 목록 출력)
+npm run notices              THIRD_PARTY_NOTICES.md 재생성 (허용 목록 밖 라이선스면 실패)
 npm run fonts                일본어 폰트 서브셋 재생성 (assets/fonts/PretendardJP-Common.ttf). Python과 fontTools가 필요하다(개발 때만)
 cargo run -p humblepdf-cli -- inspect <파일> [--password <pw>]
 cargo run -p humblepdf-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
@@ -62,6 +63,7 @@ cargo run -p humblepdf-cli -- export --model <json> --out <pdf> [--signatures <�
 cargo run -p humblepdf-cli -- render-bytes <파일> --out <pdf> [--password <pw>]   되살린 주석을 뺀 렌더링용 PDF
 ```
 
+- CI: GitHub Actions(`.github/workflows/ci.yml`)가 push·PR마다 위 검사를 모두 돌린다. 릴리스는 `v*` 태그로 초안을 만든다(`release.yml`, 절차는 `docs/RELEASE_CHECKLIST.md`).
 - 측정용 훅: 환경 변수 `HUMBLEPDF_BENCH=<pdf 경로>`로 exe를 실행하면 첫 쪽 표시 시간을 `HUMBLEPDF_BENCH_OUT` 파일(없으면 stdout)에 쓰고 종료한다.
 - 암호 fixture의 비밀번호는 `fixture-pass`다(합성 파일 전용).
 
@@ -77,7 +79,7 @@ cargo run -p humblepdf-cli -- render-bytes <파일> --out <pdf> [--password <pw>
 6. **저장 방식.** 하이라이트·도형·텍스트는 표준 PDF 주석으로 저장하고, 서명은 페이지 콘텐츠로 굽는다. (SPEC 7장)
 7. **오프라인.** 네트워크 요청을 하지 않는다. 폰트와 PDF.js의 워커·cMap·표준 폰트·wasm을 모두 앱에 넣는다. CDN 주소를 쓰지 않는다.
 8. **개인정보.** 실제 서명, 실제 문서, 사용자 이름을 저장소·테스트·로그에 넣지 않는다. 테스트 파일은 합성해서 만든다. 출력 PDF에 사용자 계정 이름을 기록하지 않는다.
-9. **라이선스.** 의존성은 MIT, Apache-2.0, BSD, OFL처럼 허용적인 것만 쓴다. GPL·AGPL 계열(MuPDF 등)은 쓰지 않는다. 의존성을 추가할 때는 이유와 라이선스를 DECISIONS에 적는다.
+9. **라이선스.** 앱은 MIT다. 의존성은 MIT, Apache-2.0, BSD, OFL처럼 허용적인 것만 쓴다. GPL·AGPL 계열(MuPDF 등)은 쓰지 않는다. 예외: Tauri가 쓰는 크레이트 5개(cssparser, cssparser-macros, selectors, dtoa-short, option-ext)의 MPL-2.0만 고치지 않고 쓰는 조건으로 허용한다(DECISIONS D40). 의존성을 추가할 때는 이유와 라이선스를 DECISIONS에 적고 `npm run notices`로 고지를 다시 만든다.
 10. **범위.** SPEC의 비목표와 후순위 항목은 요청 없이 구현하지 않는다. 필요해 보이면 제안만 한다.
 
 ## 작업 방식
