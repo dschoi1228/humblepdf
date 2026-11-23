@@ -5,8 +5,10 @@
 //   deleted, all four rotations and both image fits (M2)
 // - out/m3_sample.pdf: highlights in the four colors over Korean text, and rectangles,
 //   ellipses, lines and arrows on pages rotated 0/90/180/270 (M3)
+// - out/m4_sample.pdf: the synthetic signature baked over Korean text and upright on pages
+//   rotated 0/90/180/270 and an image page, several times (M4)
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const PASSWORD = "fixture-pass";
 
@@ -96,6 +98,32 @@ for (const p of m3.pages.slice(1)) {
 writeFileSync("out/m3_sample.model.json", JSON.stringify(m3, null, 2));
 cli(["export", "--model", "out/m3_sample.model.json", "--out", "out/m3_sample.pdf"]);
 
+// M4: signatures placed the way the signature tool places them (upright on screen).
+const sigPng = readFileSync("tests/fixtures/signatures/sig-demo.png");
+const sigAspect = sigPng.readUInt32BE(16) / sigPng.readUInt32BE(20);
+const m4 = cli(["model", "tests/fixtures/korean_embedded.pdf", "tests/fixtures/rotated.pdf", "tests/fixtures/photo.jpg"], true);
+m4.pages = m4.pages.filter((p) => p.sourceId !== m4.sources[1].id || p.pageIndex < 4);
+let sigN = 0;
+const placeSig = (p, cx, cy, screenW) => {
+  const r = (p.baseRotation + p.userRotation) % 360;
+  const sideways = r === 90 || r === 270;
+  const screenH = screenW / sigAspect;
+  const [ex, ey] = sideways ? [screenH, screenW] : [screenW, screenH];
+  const b = p.box;
+  return {
+    type: "signature",
+    id: `signature-${++sigN}`,
+    signatureId: "sig-demo",
+    rect: { x0: b.x0 + cx - ex / 2, y0: b.y0 + cy - ey / 2, x1: b.x0 + cx + ex / 2, y1: b.y0 + cy + ey / 2 },
+    rotation: r,
+  };
+};
+// Page 1: over the first text line, and once more below.
+m4.pages[0].objects = [placeSig(m4.pages[0], 180, 773, 150), placeSig(m4.pages[0], 300, 500, 200)];
+for (const p of m4.pages.slice(1)) p.objects = [placeSig(p, 200, 200, 140), placeSig(p, 380, 420, 100)];
+writeFileSync("out/m4_sample.model.json", JSON.stringify(m4, null, 2));
+cli(["export", "--model", "out/m4_sample.model.json", "--out", "out/m4_sample.pdf", "--signatures", "tests/fixtures/signatures"]);
+
 const order = model.pages
   .map((p, i) => {
     const name = Object.keys(src).find((k) => src[k] === p.sourceId);
@@ -131,4 +159,13 @@ out/m3_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
   3. In Acrobat Reader and Edge: each object is an annotation (comment) that can be
      selected, moved and deleted. Undo there restores it.
   4. Chrome shows the same picture (it may not let you edit annotations).
+
+out/m4_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
+  1. Page 1: the blue signature sits over the first text line; the text shows through
+     around the strokes (transparent background). A second one is lower on the page.
+  2. Pages 2-5 (rotated 0, 90, 180, 270) and page 6 (photo): two signatures each, both
+     upright when the page is read the right way up.
+  3. In Acrobat Reader and Edge the signatures cannot be selected, moved or deleted as
+     comments/annotations: they are part of the page.
+  4. All three viewers show the same picture.
 `);
