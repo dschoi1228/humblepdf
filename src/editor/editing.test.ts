@@ -150,6 +150,6 @@ describe("editing shortcuts", () => {
     expect(key("Escape")).toBe("escape");
     expect(key("ArrowLeft")).toEqual({ kind: "nudge", dx: -1, dy: 0 });
     expect(key("ArrowDown", { shiftKey: true })).toEqual({ kind: "nudge", dx: 0, dy: 10 });
-    expect(key("KeyT")).toBeNull();
+    expect(key("KeyT")).toEqual({ kind: "tool", tool: "text" });
   });
 });

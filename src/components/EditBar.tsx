@@ -1,11 +1,12 @@
 // Second toolbar row (D29): editing tools on the left, properties of the selected object
 // (or of the current draw tool) on the right.
-import { Ban, Circle, Highlighter, MousePointer2, MoveUpRight, Settings2, Signature, Slash, Square, Trash2 } from "lucide-react";
+import { Ban, Circle, Highlighter, MousePointer2, MoveUpRight, Settings2, Signature, Slash, Square, Trash2, Type } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import type { PageObject } from "../bindings/PageObject";
 import { deleteSelectedObject, setProps } from "../app/objectActions";
 import { chooseTool } from "../app/toolActions";
 import { useSignatureStore } from "../signatures/signatureStore";
+import { FONT_SIZES } from "../editor/textLayout";
 import { useEditorStore } from "../editor/editorStore";
 import {
   HIGHLIGHT_COLORS,
@@ -34,6 +35,7 @@ const TOOL_ICONS: Record<Tool, ReactNode> = {
   ellipse: <Circle />,
   line: <Slash />,
   arrow: <MoveUpRight />,
+  text: <Type />,
   signature: <Signature />,
 };
 
@@ -146,6 +148,21 @@ function Properties(props: { kind: DrawTool; values: PropsPatch }) {
     />
   );
 
+  if (props.kind === "text") {
+    return (
+      <>
+        <Swatches label={t.editor.color} colors={PALETTE} value={v.color ?? null} onPick={(c) => c && setProps({ color: c })} testId="color" />
+        <NumberSelect
+          label={t.editor.fontSize}
+          value={v.fontSize ?? 12}
+          options={FONT_SIZES}
+          format={(s) => `${s}pt`}
+          onChange={(fontSize) => setProps({ fontSize })}
+          testId="font-size"
+        />
+      </>
+    );
+  }
   if (props.kind === "highlight") {
     return (
       <>

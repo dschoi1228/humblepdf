@@ -2,7 +2,7 @@
 // For one page it renders (a) the source page, (b) the source page + SVG overlay of the
 // model objects, (c) the exported page, and returns the bounding boxes of what (b) and (c)
 // add on top of (a).
-import fontUrl from "../../assets/fonts/Pretendard-Regular.ttf?url";
+import { TEXT_FONT_URLS } from "../editor/fonts";
 import type { PageObject } from "../bindings/PageObject";
 import type { Rotation } from "../bindings/Rotation";
 import { viewportTransform } from "../coords";
@@ -18,8 +18,9 @@ export type MatchResult = {
   images: { overlay: string; exported: string };
 };
 
-const FONT_FAMILY = "PdfEditorBundled";
-let fontDataUrl: Promise<string> | null = null;
+// Same fallback order as the app (D32).
+const FONT_FAMILY = "PdfEditorBundled, PdfEditorBundledJP";
+let fontDataUrls: Promise<[string, string]> | null = null;
 
 async function toDataUrl(url: string, mime: string): Promise<string> {
   const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
@@ -80,8 +81,8 @@ export async function measurePage(args: {
   objects: PageObject[];
   signatureUrls: Record<string, string>;
 }): Promise<MatchResult> {
-  fontDataUrl ??= toDataUrl(fontUrl, "font/ttf");
-  const font = await fontDataUrl;
+  fontDataUrls ??= Promise.all([toDataUrl(TEXT_FONT_URLS.main, "font/ttf"), toDataUrl(TEXT_FONT_URLS.jp, "font/ttf")]);
+  const [font, fontJp] = await fontDataUrls;
   const sigs: Record<string, string> = {};
   for (const [id, url] of Object.entries(args.signatureUrls)) sigs[id] = await toDataUrl(url, "image/png");
 
@@ -92,7 +93,9 @@ export async function measurePage(args: {
   const svg = overlaySvg(args.objects, t, {
     fontFamily: FONT_FAMILY,
     signatureUrl: (id) => sigs[id],
-    fontFaceCss: `@font-face{font-family:${FONT_FAMILY};src:url(${font}) format("truetype");}`,
+    fontFaceCss:
+      `@font-face{font-family:PdfEditorBundled;src:url(${font}) format("truetype");}` +
+      `@font-face{font-family:PdfEditorBundledJP;src:url(${fontJp}) format("truetype");}`,
   });
   const composite = document.createElement("canvas");
   composite.width = base.width;

@@ -1,7 +1,15 @@
 // Editor overlay of one page (D28): draws the page objects with the shared SVG renderer and
 // handles the pointer: select, move, resize and draw. Geometry is computed in user space
 // (src/editor/geometry.ts); screen <-> user conversions use the coords module only.
-import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { Page } from "../bindings/Page";
 import type { PageObject } from "../bindings/PageObject";
 import type { Point } from "../bindings/Point";
@@ -24,6 +32,9 @@ import {
 } from "../editor/geometry";
 import type { DrawTool } from "../editor/tools";
 import { objectSvg, type OverlayAssets } from "../overlay/svg";
+import { TEXT_FONT_FAMILY } from "../editor/fonts";
+import { TEXT_ASCENT } from "../editor/textLayout";
+import { TextEditor } from "./TextEditor";
 
 /** Pointer travel (screen px) below which a press counts as a click. */
 export const CLICK_SLOP_PX = 4;
@@ -32,7 +43,7 @@ export const HIT_TOLERANCE_PX = 5;
 const HANDLE_PX = 8;
 
 // Text and signatures are drawn by M5 and M4; until then they only need placeholders.
-const ASSETS: OverlayAssets = { fontFamily: "PdfEditorBundled", signatureUrl: () => "" };
+const ASSETS: OverlayAssets = { fontFamily: TEXT_FONT_FAMILY, signatureUrl: () => "" };
 
 /** One object as its own SVG, so a highlight can multiply with the page canvas below it. */
 export const ObjectSvg = memo(function ObjectSvg(props: { object: PageObject; transform: PageTransform }) {
@@ -83,7 +94,7 @@ export function ObjectsView(props: { objects: readonly PageObject[]; transform: 
 type Drag =
   | { kind: "move"; pointerId: number; start: Point; orig: PageObject }
   | { kind: "resize"; pointerId: number; handle: Handle; orig: PageObject }
-  | { kind: "create"; pointerId: number; tool: DrawTool; start: Point; client: Point; id: string };
+  | { kind: "create"; pointerId: number; tool: Exclude<DrawTool, "text">; start: Point; client: Point; id: string };
 
 function resizeCursor(dx: number, dy: number): string {
   const a = ((Math.atan2(dy, dx) * 180) / Math.PI + 180) % 180;
@@ -105,6 +116,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   const [ghostAt, setGhostAt] = useState<Point | null>(null);
   const lib = useSignatureStore((s) => (tool === "signature" ? s.list.find((x) => x.id === s.current) : undefined));
   const [dragKind, setDragKind] = useState<Drag["kind"] | null>(null);
+  const editing = useEditorStore((s) => (s.editing?.pageId === page.id ? s.editing : null));
 
   const scale = Math.hypot(transform.matrix[0], transform.matrix[1]);
   const userAt = (e: { clientX: number; clientY: number }): Point => {
@@ -137,6 +149,22 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     if (e.button !== 0 || drag.current) return;
     const p = userAt(e);
     const editor = useEditorStore.getState();
+    // A click outside the text being typed commits it (D33) and does nothing else.
+    if (editor.editing) {
+      (document.activeElement as HTMLElement | null)?.blur();
+      e.preventDefault();
+      return;
+    }
+    if (tool === "text") {
+      // The click marks the top of the first line; the baseline is one ascent below it.
+      e.preventDefault();
+      const size = editor.props.text.fontSize;
+      const down = screenAxes(transform).down;
+      const origin = clampPoint({ x: p.x + down.x * TEXT_ASCENT * size, y: p.y + down.y * TEXT_ASCENT * size }, page.box);
+      editor.select(null);
+      editor.setEditing({ pageId: page.id, objectId: null, origin, rotation: displayRotation(page.baseRotation, page.userRotation) });
+      return;
+    }
     if (tool === "select") {
       const key = (e.target as Element).closest("[data-handle]")?.getAttribute("data-handle");
       const handle = key ? parseHandle(key) : null;
@@ -235,14 +263,26 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   };
 
   // While dragging, the draft replaces its original (move, resize) or is added (create).
+  // Double-click on a text edits it again (D33).
+  const onDoubleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (tool !== "select") return;
+    const id = hitTest(page.objects, userAt(e), HIT_TOLERANCE_PX / scale);
+    const o = page.objects.find((x) => x.id === id);
+    if (o?.type !== "text") return;
+    const editor = useEditorStore.getState();
+    editor.select(null);
+    editor.setEditing({ pageId: page.id, objectId: o.id, origin: o.origin, rotation: o.rotation });
+  };
+
+  const shown = editing?.objectId ? page.objects.filter((o) => o.id !== editing.objectId) : page.objects;
   const objects = draft
-    ? page.objects.some((o) => o.id === draft.id)
-      ? page.objects.map((o) => (o.id === draft.id ? draft : o))
-      : [...page.objects, draft]
-    : page.objects;
+    ? shown.some((o) => o.id === draft.id)
+      ? shown.map((o) => (o.id === draft.id ? draft : o))
+      : [...shown, draft]
+    : shown;
   const selectedObject = selectedId ? objects.find((o) => o.id === selectedId) : undefined;
 
-  const cursor = tool !== "select" ? "crosshair" : hover || dragKind === "move" ? "move" : "default";
+  const cursor = tool === "text" ? "text" : tool !== "select" ? "crosshair" : hover || dragKind === "move" ? "move" : "default";
 
   return (
     <div
@@ -253,6 +293,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={end}
+      onDoubleClick={onDoubleClick}
       onPointerLeave={() => {
         setHover(false);
         setGhostAt(null);
@@ -264,6 +305,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
         <ObjectSvg key={o.id} object={o} transform={transform} />
       ))}
       {selectedObject && <Selection object={selectedObject} transform={transform} />}
+      {editing && <TextEditor key={editing.objectId ?? "new"} page={page} transform={transform} editing={editing} />}
       {tool === "signature" && lib && ghostAt && (
         // Where a click would place the chosen signature (D31).
         <div className="pointer-events-none absolute inset-0 opacity-60" data-testid="signature-ghost">

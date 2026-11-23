@@ -3,12 +3,12 @@ import type { PageObject } from "../bindings/PageObject";
 
 export type Rgb = [number, number, number];
 
-export type DrawTool = "highlight" | "rect" | "ellipse" | "line" | "arrow";
+export type DrawTool = "highlight" | "rect" | "ellipse" | "line" | "arrow" | "text";
 /** Places a signature from the library (M4); it has no properties of its own. */
 export type Tool = "select" | DrawTool | "signature";
 
-export const TOOLS: readonly Tool[] = ["select", "highlight", "rect", "ellipse", "line", "arrow", "signature"];
-export const DRAW_TOOLS: readonly DrawTool[] = ["highlight", "rect", "ellipse", "line", "arrow"];
+export const TOOLS: readonly Tool[] = ["select", "text", "highlight", "rect", "ellipse", "line", "arrow", "signature"];
+export const DRAW_TOOLS: readonly DrawTool[] = ["highlight", "rect", "ellipse", "line", "arrow", "text"];
 
 /** Single-key shortcut of each tool, matched by `KeyboardEvent.code`. */
 export const TOOL_KEYS: Record<Tool, string> = {
@@ -18,6 +18,7 @@ export const TOOL_KEYS: Record<Tool, string> = {
   ellipse: "KeyO",
   line: "KeyL",
   arrow: "KeyA",
+  text: "KeyT",
   signature: "KeyS",
 };
 
@@ -53,7 +54,15 @@ export type ShapeProps = { stroke: Rgb | null; strokeWidth: number; fill: Rgb | 
 export type LineProps = { stroke: Rgb; strokeWidth: number; opacity: number };
 
 /** Any property change; each object kind takes the fields it has. */
-export type PropsPatch = { color?: Rgb; stroke?: Rgb | null; strokeWidth?: number; fill?: Rgb | null; opacity?: number };
+export type TextProps = { fontSize: number; color: Rgb };
+export type PropsPatch = {
+  color?: Rgb;
+  stroke?: Rgb | null;
+  strokeWidth?: number;
+  fill?: Rgb | null;
+  opacity?: number;
+  fontSize?: number;
+};
 
 export type ToolProps = {
   highlight: HighlightProps;
@@ -61,6 +70,7 @@ export type ToolProps = {
   ellipse: ShapeProps;
   line: LineProps;
   arrow: LineProps;
+  text: TextProps;
 };
 
 export const DEFAULT_PROPS: ToolProps = {
@@ -69,6 +79,7 @@ export const DEFAULT_PROPS: ToolProps = {
   ellipse: { stroke: PALETTE.red, strokeWidth: 2, fill: null, opacity: 1 },
   line: { stroke: PALETTE.red, strokeWidth: 2, opacity: 1 },
   arrow: { stroke: PALETTE.red, strokeWidth: 2, opacity: 1 },
+  text: { fontSize: 12, color: PALETTE.black },
 };
 
 /** The tool that makes objects like `o`, or null for objects M3 does not edit. */
@@ -80,6 +91,8 @@ export function toolOf(o: PageObject): DrawTool | null {
       return o.type;
     case "line":
       return o.arrow ? "arrow" : "line";
+    case "text":
+      return "text";
     default:
       return null;
   }
@@ -95,6 +108,8 @@ export function propsOf(o: PageObject): PropsPatch {
       return { stroke: o.stroke, strokeWidth: o.strokeWidth, fill: o.fill, opacity: o.opacity };
     case "line":
       return { stroke: o.stroke, strokeWidth: o.strokeWidth, opacity: o.opacity };
+    case "text":
+      return { fontSize: o.fontSize, color: o.color };
     default:
       return {};
   }
@@ -122,6 +137,8 @@ export function withProps(o: PageObject, patch: PropsPatch): PageObject {
         strokeWidth: patch.strokeWidth ?? o.strokeWidth,
         opacity: patch.opacity ?? o.opacity,
       };
+    case "text":
+      return { ...o, fontSize: patch.fontSize ?? o.fontSize, color: patch.color ?? o.color };
     default:
       return o;
   }

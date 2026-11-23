@@ -8,6 +8,8 @@ import { EditBar } from "./components/EditBar";
 import { SignatureDialog } from "./components/SignatureDialog";
 import { chooseTool } from "./app/toolActions";
 import { useSignatureStore } from "./signatures/signatureStore";
+import { loadTextFonts, TEXT_FONT_FAMILY } from "./editor/fonts";
+import { canvasMeasure, setTextMeasure } from "./editor/textLayout";
 import { confirmDiscard, newDocument, save, saveAs } from "./app/save";
 import { shortcutFor, shortcutsBlocked, type ShortcutAction } from "./app/shortcuts";
 import { SavingDialog, UnsavedDialog } from "./components/SaveDialogs";
@@ -132,6 +134,8 @@ export default function App() {
     // StrictMode runs effects twice; the startup hooks must run once.
     if (!started.current) {
       started.current = true;
+      // Text objects are measured with the bundled fonts once they are loaded (D32).
+      void loadTextFonts().then(() => setTextMeasure(canvasMeasure(TEXT_FONT_FAMILY)));
       void useSignatureStore
         .getState()
         .load()

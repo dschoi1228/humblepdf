@@ -6,6 +6,7 @@ import type { Point } from "../bindings/Point";
 import type { Rect } from "../bindings/Rect";
 import type { Rotation } from "../bindings/Rotation";
 import { arrowLength, ARROW_BASE_RATIO } from "../shapes/spec";
+import { textBounds } from "./textLayout";
 import type { DrawTool, HighlightProps, LineProps, ShapeProps } from "./tools";
 
 /** Smallest width and height of a shape, and length of a line (pt). */
@@ -54,6 +55,8 @@ export function objectBounds(o: PageObject): Rect | null {
       return normRect(o.from, o.to);
     case "signature":
       return o.rect;
+    case "text":
+      return textBounds(o);
     default:
       return null;
   }
@@ -72,6 +75,8 @@ function mapPoints(o: PageObject, f: (p: Point) => Point): PageObject {
     }
     case "line":
       return { ...o, from: f(o.from), to: f(o.to) };
+    case "text":
+      return { ...o, origin: f(o.origin) };
     default:
       return o;
   }
@@ -89,6 +94,8 @@ export function moveObject(o: PageObject, dx: number, dy: number, box: Rect): Pa
 
 /** Handles of an editable object with their user-space positions. */
 export function handlesOf(o: PageObject): { handle: Handle; at: Point }[] {
+  // Text is sized by its font size, not by handles (SPEC 6.7).
+  if (o.type === "text") return [];
   if (o.type === "line") {
     return [
       { handle: "from", at: o.from },
@@ -161,7 +168,7 @@ export function resizeObject(o: PageObject, handle: Handle, p: Point, box: Rect,
     return handle === "from" ? { ...o, from: moved } : { ...o, to: moved };
   }
   const b = objectBounds(o);
-  if (!b || typeof handle === "string") return o;
+  if (!b || typeof handle === "string" || o.type === "text") return o;
   if (o.type === "signature") return { ...o, rect: resizeKeepingRatio(b, handle, p, box) };
   const q = clampPoint(p, box);
   const n = { ...b };
@@ -227,6 +234,9 @@ export function hitTest(objects: readonly PageObject[], p: Point, tol: number): 
       case "signature":
         if (contains(inflate(o.rect, tol), p)) return o.id;
         break;
+      case "text":
+        if (contains(inflate(textBounds(o), tol), p)) return o.id;
+        break;
     }
   }
   return null;
@@ -259,6 +269,8 @@ export type NewObjectInput = {
 /** The object a draw tool makes from a press and a drag (or click); null for none. */
 export function newObject(input: NewObjectInput): PageObject | null {
   const { tool, id, start, box, axes } = input;
+  // Text is made by the text editor, not by dragging.
+  if (tool === "text") return null;
   const end = input.end ? clampPoint(input.end, box) : null;
 
   if (tool === "line" || tool === "arrow") {
