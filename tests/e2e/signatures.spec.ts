@@ -96,6 +96,7 @@ test("library: add, rename and delete; a placed signature cannot be deleted", as
   await click(page, 0, { x: box.x0 + 300, y: box.y0 + 400 });
   const placed = await signatures(page, 0);
   expect(placed).toHaveLength(1);
+  await page.keyboard.press("Escape");
   expect(placed[0].signatureId).toBe(sigDemoId);
 
   // Deleting the placed one is refused; the other can go.
@@ -138,9 +139,23 @@ test("placing on pages shown at 0 and 90 degrees, resizing with the ratio kept, 
     expect(screenW).toBeCloseTo(pageScreenW * 0.25, 6);
     expect(screenW / screenH).toBeCloseTo(iw / ih, 6);
     expect(Math.abs((s.rect.x0 + s.rect.x1) / 2 - at.x)).toBeLessThan(tol);
-    // Placed and selected; the tool is back to selection.
-    expect(await page.evaluate(() => window.__viewer!.editor())).toEqual({ tool: "select", selected: { pageId: p.id, objectId: s.id } });
-    await expect(page.locator('[data-testid=selection] [data-testid=handle]')).toHaveCount(4);
+    // The tool stays, and the chosen signature follows the pointer as a preview (D31).
+    expect(await page.evaluate(() => window.__viewer!.editor())).toEqual({ tool: "signature", selected: null });
+    const ghost = page.locator(`[data-testid=page][data-page-index="${index}"] [data-testid=signature-ghost]`);
+    await expect(ghost).toHaveCount(1);
+    // The preview sits where a click would place it.
+    const next = { x: p.box.x0 + 200, y: p.box.y0 + 200 };
+    const c = await client(page, index, next);
+    await page.mouse.move(c.x, c.y);
+    const gb = (await ghost.locator("[data-object-type=signature] image").boundingBox())!;
+    expect(Math.abs(gb.x + gb.width / 2 - c.x)).toBeLessThan(2);
+    expect(Math.abs(gb.y + gb.height / 2 - c.y)).toBeLessThan(2);
+    // A second click places a second one without picking the tool again.
+    await page.mouse.click(c.x, c.y);
+    expect(await signatures(page, index)).toHaveLength(2);
+    await page.keyboard.press("Escape");
+    expect((await page.evaluate(() => window.__viewer!.editor())).tool).toBe("select");
+    await expect(ghost).toHaveCount(0);
   }
 
   // Corner resize on page 1: the opposite corner stays, the ratio is kept. One Undo step.
@@ -170,10 +185,12 @@ test("placing on pages shown at 0 and 90 degrees, resizing with the ratio kept, 
   expect(w(moved)).toBeCloseTo(w(resized), 6);
 
   // Delete and Undo.
+  // Delete the selected one (each page has two now) and Undo.
   await page.keyboard.press("Delete");
-  expect(await signatures(page, 0)).toHaveLength(0);
-  await page.keyboard.press("Control+z");
+  expect((await signatures(page, 0)).map((x) => x.id)).not.toContain(moved.id);
   expect(await signatures(page, 0)).toHaveLength(1);
+  await page.keyboard.press("Control+z");
+  expect(await signatures(page, 0)).toHaveLength(2);
 
   expect(w_.external).toEqual([]);
   expect(w_.consoleProblems).toEqual([]);
@@ -187,8 +204,8 @@ test("a saved signature is page content, not an annotation", async ({ page }) =>
     const b = (await model(page)).pages[index].box;
     await page.keyboard.press("KeyS");
     await click(page, index, { x: b.x0 + 300, y: b.y0 + 400 });
-    await page.keyboard.press("KeyS");
     await click(page, index, { x: b.x0 + 200, y: b.y0 + 150 });
+    await page.keyboard.press("Escape");
   }
   page.once("dialog", (d) => void d.accept("/__out/m4/signatures.pdf"));
   await page.keyboard.press("Control+Shift+s");

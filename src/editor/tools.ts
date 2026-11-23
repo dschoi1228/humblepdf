@@ -21,8 +21,8 @@ export const TOOL_KEYS: Record<Tool, string> = {
   signature: "KeyS",
 };
 
-/** Tools that stay active after an object is made (user decision, D29). */
-export const STICKY_TOOLS: ReadonlySet<Tool> = new Set<Tool>(["highlight"]);
+/** Tools that stay active after an object is made (user decisions, D29, D31). */
+export const STICKY_TOOLS: ReadonlySet<Tool> = new Set<Tool>(["highlight", "signature"]);
 
 export type HighlightColor = "yellow" | "green" | "pink" | "sky";
 export const HIGHLIGHT_COLORS: Record<HighlightColor, Rgb> = {

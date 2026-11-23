@@ -76,6 +76,13 @@ describe("editor store and object commands", () => {
     expect(useEditorStore.getState()).toMatchObject({ tool: "highlight", selected: null });
   });
 
+  it("the signature tool stays active too (D31)", () => {
+    useEditorStore.getState().setTool("signature");
+    const s: PageObject = { type: "signature", id: "s", signatureId: "sg-1", rect: { x0: 0, y0: 0, x1: 30, y1: 10 }, rotation: 0 };
+    commitNewObject("p1", s, "signature");
+    expect(useEditorStore.getState()).toMatchObject({ tool: "signature", selected: null });
+  });
+
   it("property changes are one step each and are remembered for the tool", () => {
     commitNewObject("p1", rect("a"), "rect");
     setProps({ strokeWidth: 6 });

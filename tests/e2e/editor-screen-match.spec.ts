@@ -121,7 +121,8 @@ test("the editor overlay matches the saved PDF within 1px on rotated pages", asy
     await page.keyboard.press("KeyS");
     const s = await client(page, index, P(420, 320));
     await page.mouse.click(s.x, s.y);
-    await expect(page.locator(`[data-testid=page][data-page-index="${index}"] [data-object-type=signature]`)).toHaveCount(1);
+    await expect(page.locator(`[data-testid=page][data-page-index="${index}"] [data-testid=object-layer] > [data-object-type=signature]`)).toHaveCount(1);
+    await page.keyboard.press("Escape");
     shots.push(await shoot(page, index, true));
   }
   await save(page, "/__out/m3/match/editor.pdf", "editor.pdf");
@@ -197,7 +198,7 @@ test("text under a signature's transparent background stays visible on screen an
   await page.keyboard.press("KeyS");
   const at = await client(page, 0, { x: box.x0 + 180, y: box.y0 + 773 });
   await page.mouse.click(at.x, at.y);
-  await expect(page.locator("[data-object-type=signature]").first()).toBeVisible();
+  await expect(page.locator("[data-testid=object-layer] > [data-object-type=signature]")).toHaveCount(1);
   const sig = (await page.evaluate(() => window.__viewer!.model())).pages[0].objects[0];
   if (sig.type !== "signature") throw new Error("no signature");
   const pageShot = await shoot(page, 0, false);

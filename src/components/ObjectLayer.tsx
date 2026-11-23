@@ -101,6 +101,9 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   const drag = useRef<Drag | null>(null);
   const [draft, setDraft] = useState<PageObject | null>(null);
   const [hover, setHover] = useState(false);
+  /** Pointer position (user space) while the signature tool shows its preview. */
+  const [ghostAt, setGhostAt] = useState<Point | null>(null);
+  const lib = useSignatureStore((s) => (tool === "signature" ? s.list.find((x) => x.id === s.current) : undefined));
   const [dragKind, setDragKind] = useState<Drag["kind"] | null>(null);
 
   const scale = Math.hypot(transform.matrix[0], transform.matrix[1]);
@@ -214,6 +217,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     const d = drag.current;
     if (!d) {
       if (tool === "select") setHover(!!hitTest(page.objects, userAt(e), HIT_TOLERANCE_PX / scale));
+      else if (tool === "signature") setGhostAt(clampPoint(userAt(e), page.box));
       return;
     }
     if (e.pointerId !== d.pointerId) return;
@@ -249,7 +253,10 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={end}
-      onPointerLeave={() => setHover(false)}
+      onPointerLeave={() => {
+        setHover(false);
+        setGhostAt(null);
+      }}
       data-page-id={page.id}
       data-testid="object-layer"
     >
@@ -257,6 +264,23 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
         <ObjectSvg key={o.id} object={o} transform={transform} />
       ))}
       {selectedObject && <Selection object={selectedObject} transform={transform} />}
+      {tool === "signature" && lib && ghostAt && (
+        // Where a click would place the chosen signature (D31).
+        <div className="pointer-events-none absolute inset-0 opacity-60" data-testid="signature-ghost">
+          <ObjectSvg
+            object={newSignature({
+              id: "ghost",
+              signatureId: lib.id,
+              at: ghostAt,
+              aspect: lib.width / lib.height,
+              box: page.box,
+              axes: screenAxes(transform),
+              rotation: displayRotation(page.baseRotation, page.userRotation),
+            })}
+            transform={transform}
+          />
+        </div>
+      )}
     </div>
   );
 });
