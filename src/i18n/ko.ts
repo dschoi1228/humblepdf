@@ -57,6 +57,10 @@ export const ko = {
     saveAs: "다른 이름으로 저장",
     title: "저장할 파일 이름",
     defaultSuffix: "_편집",
+    flatten: "평탄화하여 내보내기",
+    flattenSuffix: "_평탄화",
+    flattened: (name: string) => `"${name}"(으)로 평탄화하여 내보냈습니다.`,
+    flattenedNote: "객체를 페이지에 구웠습니다. 다시 열어도 편집할 수 없습니다.",
     saving: "저장 중…",
     savingDetail: "PDF를 만들고 있습니다. 잠시 기다려 주세요.",
     saved: (name: string) => `"${name}"에 저장했습니다.`,
@@ -133,6 +137,7 @@ export const ko = {
     missing: "서명 이미지 없음",
   },
 
+  restored: (n: number) => `이 앱으로 저장한 편집 가능한 객체 ${n}개를 되살렸습니다.`,
   addFailed: (name: string) => `"${name}" 파일을 추가하지 못했습니다.`,
   pageFailed: "이 페이지를 표시하지 못했습니다.",
 

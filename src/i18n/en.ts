@@ -58,6 +58,10 @@ export const en: Strings = {
     saveAs: "Save as",
     title: "File name to save",
     defaultSuffix: "_edited",
+    flatten: "Export flattened",
+    flattenSuffix: "_flattened",
+    flattened: (name: string) => `Exported a flattened copy to "${name}".`,
+    flattenedNote: "Objects are baked into the pages and can't be edited when reopened.",
     saving: "Saving…",
     savingDetail: "Creating the PDF. Please wait.",
     saved: (name: string) => `Saved to "${name}".`,
@@ -134,6 +138,7 @@ export const en: Strings = {
     missing: "Signature image missing",
   },
 
+  restored: (n: number) => (n === 1 ? "Restored 1 editable object saved by this app." : `Restored ${n} editable objects saved by this app.`),
   addFailed: (name: string) => `Could not add "${name}".`,
   pageFailed: "Could not display this page.",
 

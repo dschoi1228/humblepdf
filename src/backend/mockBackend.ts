@@ -44,6 +44,20 @@ function detect(bytes: Uint8Array): "pdf" | "image" | null {
   return head.includes("%PDF-") ? "pdf" : null;
 }
 
+/** Options kept per opened source: the password and whether objects were restored. */
+const sourceOptions = new Map<string, { password?: string; restored: boolean }>();
+
+const fileBacked = (path: string) => path.startsWith("/__fixtures/") || path.startsWith("/__out/");
+
+const query = (path: string, password?: string) =>
+  new URLSearchParams({ path, ...(password !== undefined ? { password } : {}) }).toString();
+
+/** The core's view of a file under /__fixtures/ or /__out/ (dev server, D36); null if unavailable. */
+async function coreInfo(path: string, password?: string): Promise<SourceInfo | null> {
+  const res = await fetch(`/__inspect?${query(path, password)}`);
+  return res.ok ? ((await res.json()) as SourceInfo) : null;
+}
+
 function nameOf(path: string): string {
   return blobNames.get(path) ?? baseName(path);
 }
@@ -65,7 +79,7 @@ async function pdfInfo(bytes: Uint8Array, password?: string): Promise<SourceInfo
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const [x0, y0, x1, y1] = page.view;
-      pages.push({ pageIndex: i - 1, box: { x0, y0, x1, y1 }, baseRotation: page.rotate as Rotation });
+      pages.push({ pageIndex: i - 1, box: { x0, y0, x1, y1 }, baseRotation: page.rotate as Rotation, objects: [] });
     }
     return { kind: "pdf", pages, encrypted: password !== undefined, image: null };
   } finally {
@@ -108,8 +122,18 @@ export const mockBackend: Backend = {
     const kind = detect(bytes);
     if (kind === null) throw fail("unknown_format", "not a PDF, JPEG or PNG");
     const info = kind === "pdf" ? await pdfInfo(bytes, password) : await imageInfo(name);
+    // Files the dev server can read also get the core's restored objects (SPEC 7.7, D36).
+    let restored = false;
+    if (kind === "pdf" && fileBacked(path)) {
+      const core = await coreInfo(path, password);
+      if (core) {
+        info.pages.forEach((p, i) => (p.objects = core.pages[i]?.objects ?? []));
+        restored = info.pages.some((p) => p.objects.length > 0);
+      }
+    }
     const sourceId = `m${nextId++}`;
     sources.set(sourceId, path);
+    sourceOptions.set(sourceId, { password, restored });
     const opened: OpenedSource = { sourceId, path, name, info };
     return opened;
   },
@@ -117,6 +141,9 @@ export const mockBackend: Backend = {
   async sourceBytes(sourceId) {
     const path = sources.get(sourceId);
     if (!path) throw fail("unknown_source", sourceId);
+    // Without the annotations restored as objects, as the Tauri backend does.
+    const opt = sourceOptions.get(sourceId);
+    if (opt?.restored) return fetchBytes(`/__render?${query(path, opt.password)}`);
     return fetchBytes(path);
   },
 
@@ -144,7 +171,7 @@ export const mockBackend: Backend = {
     return window.prompt(strings().save.title, suggested);
   },
 
-  async exportDocument(model, outPath, passwords) {
+  async exportDocument(model, outPath, passwords, flatten = false) {
     const res = await fetch("/__export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -152,6 +179,7 @@ export const mockBackend: Backend = {
         model,
         outPath,
         passwords,
+        flatten,
         // The dev server writes these where the CLI's --signatures folder points.
         signatures: mockSignatureFiles(
           model.pages.flatMap((p) => p.objects.flatMap((o) => (o.type === "signature" ? [o.signatureId] : []))),

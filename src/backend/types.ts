@@ -45,7 +45,7 @@ export interface Backend {
    * Writes the model to a new PDF (SPEC 6.9). Passwords of encrypted sources go by source id
    * and stay in memory. Rejects with `output_is_source` for a source path.
    */
-  exportDocument(model: Document, outPath: string, passwords: Record<string, string>): Promise<ExportSummary>;
+  exportDocument(model: Document, outPath: string, passwords: Record<string, string>, flatten?: boolean): Promise<ExportSummary>;
   /**
    * Guards closing the window: when `isDirty()` is true the close waits for `confirm()` and
    * is cancelled when it resolves false. Returns an unsubscribe function.

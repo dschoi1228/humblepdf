@@ -9,6 +9,8 @@
 //   rotated 0/90/180/270 and an image page, several times (M4)
 // - out/m5_sample.pdf: Korean, English and Japanese text in several sizes and colors on
 //   pages rotated 0/90/180/270, with one character outside the bundled fonts (M5)
+// - out/m6_reopened.pdf: m3_sample.pdf and m5_sample.pdf added again (objects restored from
+//   their annotations) and saved once more; out/m6_flattened.pdf: the same, flattened (M6)
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -167,6 +169,13 @@ m5.pages[0].objects.push(textAt(m5.pages[0], 60, 320, 14, GREEN, ["없는 글자
 writeFileSync("out/m5_sample.model.json", JSON.stringify(m5, null, 2));
 cli(["export", "--model", "out/m5_sample.model.json", "--out", "out/m5_sample.pdf"]);
 
+// M6: reopen the M3 and M5 samples, save again, and export a flattened copy.
+const m6 = cli(["model", "out/m3_sample.pdf", "out/m5_sample.pdf"], true);
+const restoredObjects = m6.pages.reduce((n, p) => n + p.objects.length, 0);
+writeFileSync("out/m6_sample.model.json", JSON.stringify(m6, null, 2));
+cli(["export", "--model", "out/m6_sample.model.json", "--out", "out/m6_reopened.pdf"]);
+cli(["export", "--model", "out/m6_sample.model.json", "--out", "out/m6_flattened.pdf", "--flatten"]);
+
 const order = model.pages
   .map((p, i) => {
     const name = Object.keys(src).find((k) => src[k] === p.sourceId);
@@ -222,4 +231,13 @@ out/m5_sample.pdf — open it in Acrobat Reader, Edge and Chrome and check:
   4. In Acrobat Reader and Edge each text is a text box comment that can be moved and
      deleted.
   5. All three viewers show the same picture.
+
+out/m6_reopened.pdf and out/m6_flattened.pdf — the M3 and M5 samples opened again
+(${restoredObjects} objects restored) and saved. Open them in Acrobat Reader, Edge and Chrome:
+  1. Both look exactly like m3_sample.pdf followed by m5_sample.pdf (9 pages); nothing is
+     doubled or missing.
+  2. m6_reopened.pdf: highlights, shapes and text are still annotations (selectable in
+     Acrobat Reader and Edge), each one once.
+  3. m6_flattened.pdf: nothing can be selected as an annotation; everything is part of
+     the page. Text can still be selected and copied as page text.
 `);

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import process from "node:process";
 import { execFile } from "node:child_process";
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize, resolve, sep } from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -65,6 +65,52 @@ function exportRoute(): Plugin {
     name: "export-route",
     apply: "serve",
     configureServer(server) {
+      // Reopening in browser mode (D36): the core's restored objects and rendering bytes for
+      // files under /__fixtures/ and /__out/. GET ?path=...&password=...
+      const cliFor = (req: { url?: string }, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (b?: string | Buffer) => void }, run: (file: string, password: string | null) => void) => {
+        const q = new URL(req.url ?? "", "http://localhost").searchParams;
+        const file = toFile(q.get("path") ?? "");
+        if (!file || !existsSync(file)) {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+        if (!existsSync(cliExe)) {
+          res.statusCode = 500;
+          res.end("run `cargo build -p humblepdf-cli` first");
+          return;
+        }
+        run(file, q.get("password"));
+      };
+      server.middlewares.use("/__inspect", (req, res) =>
+        cliFor(req, res, (file, password) => {
+          const args = ["inspect", file, ...(password ? ["--password", password] : [])];
+          execFile(cliExe, args, { encoding: "utf8" }, (err, stdout, stderr) => {
+            res.setHeader("Content-Type", "application/json");
+            res.statusCode = err ? 400 : 200;
+            res.end(err ? stderr : stdout);
+          });
+        }),
+      );
+      server.middlewares.use("/__render", (req, res) =>
+        cliFor(req, res, (file, password) => {
+          const work = resolve("out", "e2e", "render");
+          mkdirSync(work, { recursive: true });
+          const out = join(work, `render-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
+          const args = ["render-bytes", file, "--out", out, ...(password ? ["--password", password] : [])];
+          execFile(cliExe, args, { encoding: "utf8" }, (err, _stdout, stderr) => {
+            if (err) {
+              res.statusCode = 400;
+              res.end(stderr);
+              return;
+            }
+            const body = readFileSync(out);
+            rmSync(out, { force: true });
+            res.setHeader("Content-Type", "application/pdf");
+            res.end(body);
+          });
+        }),
+      );
       server.middlewares.use("/__export", (req, res) => {
         const reply = (status: number, body: unknown) => {
           res.statusCode = status;
@@ -82,6 +128,7 @@ function exportRoute(): Plugin {
             passwords: Record<string, string>;
             /** signatureId -> base64 PNG (browser-mode signature library). */
             signatures?: Record<string, string>;
+            flatten?: boolean;
           };
           const body = JSON.parse(text) as Body;
           const model = structuredClone(body.model);
@@ -102,6 +149,7 @@ function exportRoute(): Plugin {
           const modelFile = join(work, `model-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
           writeFileSync(modelFile, JSON.stringify(model));
           const args = ["export", "--model", modelFile, "--out", out];
+          if (body.flatten) args.push("--flatten");
           let sigDir: string | null = null;
           const sigs = Object.entries(body.signatures ?? {});
           if (sigs.length) {

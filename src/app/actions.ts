@@ -3,6 +3,7 @@ import { backend } from "../backend";
 import type { PickedFile } from "../backend/types";
 import { openFiles } from "../files/addFiles";
 import { useDocumentStore } from "../state/documentStore";
+import { restoredCount } from "../state/model";
 import { usePasswordPrompt } from "../state/passwordPrompt";
 import { errorMessage, strings } from "../i18n";
 
@@ -17,7 +18,11 @@ export async function addFiles(files: PickedFile[]): Promise<number> {
       toast.error(strings().addFailed(name), { description: errorMessage(code) });
     },
   });
-  if (opened.length) useDocumentStore.getState().addOpened(opened);
+  if (opened.length) {
+    useDocumentStore.getState().addOpened(opened);
+    const restored = restoredCount(opened);
+    if (restored) toast.info(strings().restored(restored));
+  }
   return opened.length;
 }
 

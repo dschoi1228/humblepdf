@@ -6,6 +6,11 @@ import type { Page } from "../bindings/Page";
 import type { Rotation } from "../bindings/Rotation";
 import type { SourceInfo } from "../bindings/SourceInfo";
 
+/** Number of objects restored in the opened entries (SPEC 7.7). */
+export function restoredCount(entries: { info: { pages: { objects?: unknown[] }[] } }[]): number {
+  return entries.reduce((n, e) => n + e.info.pages.reduce((m, p) => m + (p.objects?.length ?? 0), 0), 0);
+}
+
 export const SCHEMA_VERSION = 1 as const;
 
 export function emptyDocument(): Document {
@@ -35,7 +40,8 @@ export type OpenedEntry = {
 /**
  * Appends every page of each opened source after `insertAt` (end of document when null).
  * Box and base rotation come from `open_source` unchanged (SPEC 4); image pages start
- * with the `a4` fit.
+ * with the `a4` fit. Objects restored from a file saved by this app (SPEC 7.7) get new
+ * ids, so adding the same file twice never repeats an id.
  */
 export function appendSources(
   doc: Document,
@@ -58,7 +64,7 @@ export function appendSources(
         box: p.box,
         baseRotation: p.baseRotation,
         userRotation: 0,
-        objects: [],
+        objects: (p.objects ?? []).map((o) => ({ ...o, id: newId() })),
       });
     }
   }

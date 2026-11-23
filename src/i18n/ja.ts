@@ -59,6 +59,10 @@ export const ja: Strings = {
     saveAs: "名前を付けて保存",
     title: "保存するファイル名",
     defaultSuffix: "_編集",
+    flatten: "平坦化してエクスポート",
+    flattenSuffix: "_平坦化",
+    flattened: (name: string) => `「${name}」に平坦化してエクスポートしました。`,
+    flattenedNote: "オブジェクトをページに焼き込みました。再度開いても編集できません。",
     saving: "保存中…",
     savingDetail: "PDF を作成しています。しばらくお待ちください。",
     saved: (name: string) => `「${name}」に保存しました。`,
@@ -135,6 +139,7 @@ export const ja: Strings = {
     missing: "署名画像がありません",
   },
 
+  restored: (n: number) => `このアプリで保存した編集可能なオブジェクトを ${n} 個復元しました。`,
   addFailed: (name: string) => `「${name}」を追加できませんでした。`,
   pageFailed: "このページを表示できませんでした。",
 

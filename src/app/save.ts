@@ -17,7 +17,11 @@ export const useSaveStatus = create<{ saving: boolean }>(() => ({ saving: false 
 
 type ExportResult = "ok" | "is_source" | "failed";
 
-async function exportTo(path: string): Promise<ExportResult> {
+/**
+ * Writes the document to `path`. A flattened export (D37) bakes every object and is not a
+ * save: the Ctrl+S target and the "no changes" state stay as they are.
+ */
+async function exportTo(path: string, flatten = false): Promise<ExportResult> {
   const st = useDocumentStore.getState();
   const doc = st.doc;
   const model = exportModel(doc);
@@ -30,11 +34,12 @@ async function exportTo(path: string): Promise<ExportResult> {
   }
   useSaveStatus.setState({ saving: true });
   try {
-    const summary = await backend.exportDocument(model, path, passwords);
-    useDocumentStore.getState().markSaved(doc, path);
+    const summary = await backend.exportDocument(model, path, passwords, flatten);
+    if (!flatten) useDocumentStore.getState().markSaved(doc, path);
     const name = path.split(/[\\/]/).pop() ?? path;
-    toast.success(strings().save.saved(name), {
-      description: strings().save.savedDetail(summary.pageCount, formatBytes(summary.bytes)),
+    const detail = strings().save.savedDetail(summary.pageCount, formatBytes(summary.bytes));
+    toast.success(flatten ? strings().save.flattened(name) : strings().save.saved(name), {
+      description: flatten ? `${detail} · ${strings().save.flattenedNote}` : detail,
     });
     if (encrypted) toast.info(strings().save.notEncrypted);
     for (const w of summary.warnings) {
@@ -67,6 +72,19 @@ export async function saveAs(): Promise<boolean> {
     const r = await exportTo(path);
     if (r !== "is_source") return r === "ok";
     suggestion = defaultSavePath(st.doc, st.sources);
+  }
+}
+
+/** "Export flattened" (D37): asks for a path (until it is not a source) and bakes everything. */
+export async function exportFlattened(): Promise<boolean> {
+  const st = useDocumentStore.getState();
+  if (!st.doc.pages.length || useSaveStatus.getState().saving) return false;
+  const suggestion = defaultSavePath(st.doc, st.sources, strings().save.flattenSuffix);
+  for (;;) {
+    const picked = await backend.pickSavePath(suggestion);
+    if (!picked) return false;
+    const r = await exportTo(withPdfExtension(picked), true);
+    if (r !== "is_source") return r === "ok";
   }
 }
 

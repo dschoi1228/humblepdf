@@ -11,12 +11,13 @@ const pdfInfo = (n: number): SourceInfo => ({
     pageIndex: i,
     box: { x0: 0, y0: 0, x1: 100, y1: 200 },
     baseRotation: i === 1 ? 90 : 0,
+    objects: [],
   })),
 });
 const imageInfo: SourceInfo = {
   kind: "image",
   encrypted: false,
-  pages: [{ pageIndex: 0, box: { x0: 0, y0: 0, x1: 595.276, y1: 841.89 }, baseRotation: 0 }],
+  pages: [{ pageIndex: 0, box: { x0: 0, y0: 0, x1: 595.276, y1: 841.89 }, baseRotation: 0, objects: [] }],
   image: {
     pixelWidth: 10,
     pixelHeight: 20,
@@ -109,5 +110,28 @@ describe("openFiles", () => {
     ]);
     expect(errors).toEqual([["broken.pdf", "unreadable_pdf"]]);
     expect(calls[0]).toBe("broken.pdf:");
+  });
+});
+
+describe("restored objects (SPEC 7.7)", () => {
+  it("are added with new ids, unique even when the file is added twice", async () => {
+    const { appendSources, emptyDocument, restoredCount } = await import("./model");
+    const rect = { type: "rect" as const, id: "saved-id", rect: { x0: 1, y0: 1, x1: 9, y1: 9 }, stroke: [0, 0, 0] as [number, number, number], strokeWidth: 1, fill: null, opacity: 1 };
+    const info: SourceInfo = {
+      kind: "pdf",
+      encrypted: false,
+      image: null,
+      pages: [{ pageIndex: 0, box: { x0: 0, y0: 0, x1: 100, y1: 200 }, baseRotation: 0, objects: [rect, { ...rect, id: "other" }] }],
+    };
+    let n = 0;
+    const newId = () => `id${++n}`;
+    const entry = (sourceId: string) => ({ sourceId, path: `/x/${sourceId}.pdf`, name: `${sourceId}.pdf`, info });
+    const { doc } = appendSources(emptyDocument(), [entry("a"), entry("b")], newId);
+    const ids = doc.pages.flatMap((p) => p.objects.map((o) => o.id));
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(4);
+    expect(ids).not.toContain("saved-id");
+    expect(doc.pages[0].objects[0]).toMatchObject({ type: "rect", rect: rect.rect });
+    expect(restoredCount([entry("a"), entry("b")])).toBe(4);
   });
 });

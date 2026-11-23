@@ -25,6 +25,11 @@ struct Sources {
 
 struct SourceEntry {
     path: PathBuf,
+    /// Needed again to build the rendering bytes of an encrypted source. Memory only.
+    password: Option<String>,
+    /// Rendering bytes without restored annotations (SPEC 7.7), built on first use;
+    /// `Some(None)` when the file itself can be rendered.
+    rendered: Option<Option<std::sync::Arc<Vec<u8>>>>,
 }
 
 #[derive(Serialize)]
@@ -68,7 +73,14 @@ fn open_source(
             code: "internal",
             message: "state lock poisoned".into(),
         })?
-        .insert(id.clone(), SourceEntry { path: p.clone() });
+        .insert(
+            id.clone(),
+            SourceEntry {
+                path: p.clone(),
+                password: password.clone(),
+                rendered: None,
+            },
+        );
     let name = p
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -83,21 +95,42 @@ fn open_source(
 
 /// Raw bytes for rendering. Sent as a binary response, not JSON (SPEC 3).
 #[tauri::command]
+/// A file saved by this app renders without the annotations restored as objects
+/// (SPEC 7.7); those bytes are built once per source and kept in memory.
 fn source_bytes(source_id: String, sources: State<'_, Sources>) -> Result<Response, ErrorPayload> {
-    let path = {
-        let map = sources.entries.lock().map_err(|_| ErrorPayload {
-            code: "internal",
-            message: "state lock poisoned".into(),
+    let poisoned = || ErrorPayload {
+        code: "internal",
+        message: "state lock poisoned".into(),
+    };
+    let (path, password, rendered) = {
+        let map = sources.entries.lock().map_err(|_| poisoned())?;
+        let e = map.get(&source_id).ok_or(ErrorPayload {
+            code: "unknown_source",
+            message: format!("unknown source {source_id}"),
         })?;
-        map.get(&source_id)
-            .map(|e| e.path.clone())
-            .ok_or(ErrorPayload {
-                code: "unknown_source",
-                message: format!("unknown source {source_id}"),
-            })?
+        (e.path.clone(), e.password.clone(), e.rendered.clone())
     };
     let bytes = guarded(|| std::fs::read(&path).map_err(CoreError::from))?;
-    Ok(Response::new(bytes))
+    let rendered = match rendered {
+        Some(r) => r,
+        None => {
+            let r = guarded(|| source::render_bytes(&bytes, password.as_deref()))?
+                .map(std::sync::Arc::new);
+            if let Some(e) = sources
+                .entries
+                .lock()
+                .map_err(|_| poisoned())?
+                .get_mut(&source_id)
+            {
+                e.rendered = Some(r.clone());
+            }
+            r
+        }
+    };
+    Ok(Response::new(match rendered {
+        Some(r) => r.as_ref().clone(),
+        None => bytes,
+    }))
 }
 
 /// Writes the model to a new PDF (SPEC 6.9). Runs off the main thread so the UI keeps
@@ -107,6 +140,7 @@ async fn export_document(
     model: Document,
     out_path: String,
     passwords: HashMap<String, String>,
+    flatten: bool,
     app: AppHandle,
 ) -> Result<ExportSummary, ErrorPayload> {
     let signature_dir = signature_dir(&app)?;
@@ -114,7 +148,7 @@ async fn export_document(
         let ctx = ExportContext {
             passwords,
             signature_dir: Some(signature_dir),
-            ..Default::default()
+            options: export::ExportOptions { flatten },
         };
         guarded(|| export::export_to_file(&model, &ctx, &PathBuf::from(&out_path)))
     };

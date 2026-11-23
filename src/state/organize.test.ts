@@ -20,12 +20,12 @@ const pdfInfo = (n: number): SourceInfo => ({
   kind: "pdf",
   encrypted: false,
   image: null,
-  pages: Array.from({ length: n }, (_, i) => ({ pageIndex: i, box: { x0: 0, y0: 0, x1: 100, y1: 200 }, baseRotation: 0 })),
+  pages: Array.from({ length: n }, (_, i) => ({ pageIndex: i, box: { x0: 0, y0: 0, x1: 100, y1: 200 }, baseRotation: 0, objects: [] })),
 });
 const imageInfo: SourceInfo = {
   kind: "image",
   encrypted: false,
-  pages: [{ pageIndex: 0, box: { x0: 0, y0: 0, x1: 595.276, y1: 841.89 }, baseRotation: 0 }],
+  pages: [{ pageIndex: 0, box: { x0: 0, y0: 0, x1: 595.276, y1: 841.89 }, baseRotation: 0, objects: [] }],
   image: {
     pixelWidth: 10,
     pixelHeight: 20,
