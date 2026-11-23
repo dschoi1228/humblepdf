@@ -57,6 +57,22 @@ async function sigSize(page: Page) {
   }, SIG);
 }
 
+/** Every signature preview image lies inside its box (portrait images included). */
+async function expectPreviewsInside(page: Page, scope: ReturnType<Page["locator"]>) {
+  const imgs = scope.getByTestId("signature-preview");
+  const n = await imgs.count();
+  expect(n).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) {
+    const img = imgs.nth(i);
+    await expect(img).toBeVisible();
+    const ib = (await img.boundingBox())!;
+    const pb = (await img.locator("xpath=..").boundingBox())!;
+    expect(ib.y + ib.height, "preview bottom").toBeLessThanOrEqual(pb.y + pb.height + 0.5);
+    expect(ib.x + ib.width, "preview right").toBeLessThanOrEqual(pb.x + pb.width + 0.5);
+    expect(ib.y).toBeGreaterThanOrEqual(pb.y - 0.5);
+  }
+}
+
 const w = (s: Sig) => s.rect.x1 - s.rect.x0;
 const h = (s: Sig) => s.rect.y1 - s.rect.y0;
 
@@ -77,6 +93,8 @@ test("library: add, rename and delete; a placed signature cannot be deleted", as
   await addFile(join(fixturesDir, "exif_rotate90.jpg"));
   const labels = dialog.getByTestId("signature-label");
   await expect(labels).toHaveText(["sig-demo", "exif_rotate90"]);
+  // A wide and a portrait image: both previews fit their boxes.
+  await expectPreviewsInside(page, dialog);
 
   // Rename the second one.
   await dialog.getByTestId("signature-row").nth(1).getByTestId("signature-rename").click();
@@ -89,6 +107,7 @@ test("library: add, rename and delete; a placed signature cannot be deleted", as
   // Place sig-demo (the last added one is chosen; pick the first).
   const choices = page.getByTestId("signature-choice");
   await expect(choices).toHaveCount(2);
+  await expectPreviewsInside(page, page.getByTestId("edit-bar"));
   await choices.first().click();
   await expect(choices.first()).toHaveAttribute("aria-pressed", "true");
   const sigDemoId = await choices.first().getAttribute("data-signature-id");

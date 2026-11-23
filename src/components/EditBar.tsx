@@ -229,7 +229,7 @@ function SignaturePicker() {
           data-testid="signature-choice"
           data-signature-id={s.id}
         >
-          {urls[s.id] && <img src={urls[s.id]} alt="" className="max-h-full max-w-full object-contain" />}
+          {urls[s.id] && <img src={urls[s.id]} alt="" className="size-full min-h-0 min-w-0 object-contain" data-testid="signature-preview" />}
         </button>
       ))}
       <span className="text-xs text-neutral-500">{list.length ? t.signatures.placeHint : t.signatures.empty}</span>

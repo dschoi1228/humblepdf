@@ -49,7 +49,7 @@ function Row(props: { sig: SignatureMeta }) {
   return (
     <li className="flex items-center gap-3 rounded-md border border-neutral-200 p-2" data-testid="signature-row" data-signature-id={sig.id}>
       <div className="grid h-12 w-24 shrink-0 place-items-center rounded bg-[repeating-conic-gradient(#f3f4f6_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
-        {url && <img src={url} alt="" className="max-h-full max-w-full object-contain" />}
+        {url && <img src={url} alt="" className="size-full min-h-0 min-w-0 object-contain" data-testid="signature-preview" />}
       </div>
       {mode === "rename" ? (
         <form
