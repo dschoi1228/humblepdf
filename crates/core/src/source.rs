@@ -40,6 +40,8 @@ pub struct PageInfo {
     #[ts(rename = "box")]
     pub page_box: Rect,
     pub base_rotation: Rotation,
+    /// Objects restored from this app's annotations on the page (SPEC 7.7, D36).
+    pub objects: Vec<crate::model::PageObject>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -149,6 +151,10 @@ fn inspect_pdf(bytes: &[u8], password: Option<&str>) -> Result<SourceInfo> {
             page_index: i as u32,
             page_box: pdf_util::page_box(&doc, *page_id),
             base_rotation: pdf_util::page_rotation(&doc, *page_id),
+            objects: crate::restore::restorable(&doc, *page_id)
+                .into_iter()
+                .map(|(_, o)| o)
+                .collect(),
         });
     }
     Ok(SourceInfo {
@@ -206,6 +212,7 @@ fn inspect_image(bytes: &[u8]) -> Result<SourceInfo> {
             page_index: 0,
             page_box: info.a4.page_box,
             base_rotation: Rotation::R0,
+            objects: Vec::new(),
         }],
         encrypted: false,
         image: Some(info),
@@ -244,6 +251,42 @@ pub fn layout_image(pw: u32, ph: u32) -> ImageLayout {
 
 /// Builds a model with every page of the given files, in order, without objects.
 /// Used by the CLI and tests; the app builds its model in the frontend from `open_source`.
+/// `o` with another id.
+pub fn with_id(o: &crate::model::PageObject, id: String) -> crate::model::PageObject {
+    use crate::model::PageObject as O;
+    let mut o = o.clone();
+    match &mut o {
+        O::Highlight(x) => x.id = id,
+        O::Rect(x) | O::Ellipse(x) => x.id = id,
+        O::Line(x) => x.id = id,
+        O::Text(x) => x.id = id,
+        O::Signature(x) => x.id = id,
+    }
+    o
+}
+
+/// PDF bytes for rendering a source (SPEC 7.7): without the annotations that are restored
+/// as objects, so they are not drawn twice. `None` when there are none (use the file as is).
+/// An encrypted source comes out decrypted.
+pub fn render_bytes(bytes: &[u8], password: Option<&str>) -> Result<Option<Vec<u8>>> {
+    if detect_kind(bytes) != Some(SourceKind::Pdf) {
+        return Ok(None);
+    }
+    let mut doc = load_pdf(bytes, password)?;
+    let mut removed = 0;
+    for (_, page_id) in doc.get_pages() {
+        removed += crate::restore::remove_restorable(&mut doc, page_id)?;
+    }
+    if removed == 0 {
+        return Ok(None);
+    }
+    doc.trailer.remove(b"Encrypt");
+    doc.prune_objects();
+    let mut out = Vec::new();
+    doc.save_to(&mut out)?;
+    Ok(Some(out))
+}
+
 pub fn build_model(files: &[(&Path, Option<&str>)]) -> Result<crate::model::Document> {
     use crate::model::{Document, Page, Source};
     let mut sources = Vec::new();
@@ -260,7 +303,13 @@ pub fn build_model(files: &[(&Path, Option<&str>)]) -> Result<crate::model::Docu
                 page_box: p.page_box,
                 base_rotation: p.base_rotation,
                 user_rotation: Rotation::R0,
-                objects: Vec::new(),
+                // Restored objects get ids unique in this model.
+                objects: p
+                    .objects
+                    .iter()
+                    .enumerate()
+                    .map(|(k, o)| with_id(o, format!("p{}-o{}", pages.len() + 1, k + 1)))
+                    .collect(),
             });
         }
         sources.push(Source {

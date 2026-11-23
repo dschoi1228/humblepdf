@@ -339,6 +339,11 @@ pub fn assemble(
                 })
             }
         };
+        // Annotations restored as objects are written again from the model (SPEC 7.7):
+        // drop them here so deleted objects disappear and nothing is doubled.
+        if kinds[p.source_id.as_str()] == SourceKind::Pdf {
+            crate::restore::remove_restorable(&mut out, page_id)?;
+        }
         let page = out.get_dictionary_mut(page_id)?;
         page.set("Parent", pages_root);
         page.set("Rotate", i64::from(p.display_rotation().degrees()));

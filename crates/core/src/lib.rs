@@ -8,6 +8,7 @@ pub mod export;
 pub mod font;
 pub mod model;
 pub mod pdf_util;
+pub mod restore;
 pub mod shape_spec;
 pub mod signature;
 pub mod source;

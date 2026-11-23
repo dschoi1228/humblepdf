@@ -50,6 +50,15 @@ enum Command {
         #[arg(long)]
         flatten: bool,
     },
+    /// Write the bytes the viewer renders: the PDF without the annotations restored as
+    /// objects (SPEC 7.7), or an unchanged copy when there are none. Prints {"changed": bool}.
+    RenderBytes {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
 }
 
 fn split_pairs(pairs: &[String]) -> Result<HashMap<String, String>, CoreError> {
@@ -69,6 +78,17 @@ fn print_json<T: serde::Serialize>(v: &T) {
 
 fn run(command: Command) -> Result<(), CoreError> {
     match command {
+        Command::RenderBytes {
+            file,
+            out,
+            password,
+        } => {
+            let bytes = std::fs::read(&file)?;
+            let rendered = humblepdf_core::source::render_bytes(&bytes, password.as_deref())?;
+            let changed = rendered.is_some();
+            std::fs::write(&out, rendered.unwrap_or(bytes))?;
+            print_json(&serde_json::json!({ "changed": changed }));
+        }
         Command::Inspect { file, password } => {
             let info = humblepdf_core::source::inspect_path(&file, password.as_deref())?;
             print_json(&info);
