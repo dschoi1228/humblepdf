@@ -1,7 +1,7 @@
 // Korean UI strings. The Korean dictionary defines the keys; en.ts and ja.ts must match
 // it exactly (type check and src/i18n/i18n.test.ts). See CLAUDE.md, D14, D27.
 export const ko = {
-  appTitle: "PDF 에디터",
+  appTitle: "HumblePDF",
   fileFilterName: "PDF와 이미지",
 
   toolbar: {

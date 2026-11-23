@@ -8,15 +8,15 @@ use std::io::Cursor;
 use std::path::Path;
 
 use common::*;
+use humblepdf_core::CoreError;
+use humblepdf_core::export::annot::OBJECT_KEY;
+use humblepdf_core::export::{ExportContext, export_to_bytes};
+use humblepdf_core::model::{Document as Model, PageObject, Rect, Rotation, Signature};
+use humblepdf_core::pdf_util::{as_number, resolve};
+use humblepdf_core::signature::{MAX_SIDE, normalize};
+use humblepdf_core::source::{build_model, image_header};
 use image::{GenericImageView, ImageFormat, Rgba, RgbaImage};
 use lopdf::{Document, Object, ObjectId};
-use pdf_editor_core::CoreError;
-use pdf_editor_core::export::annot::OBJECT_KEY;
-use pdf_editor_core::export::{ExportContext, export_to_bytes};
-use pdf_editor_core::model::{Document as Model, PageObject, Rect, Rotation, Signature};
-use pdf_editor_core::pdf_util::{as_number, resolve};
-use pdf_editor_core::signature::{MAX_SIDE, normalize};
-use pdf_editor_core::source::{build_model, image_header};
 
 fn png_bytes(img: &RgbaImage) -> Vec<u8> {
     let mut out = Vec::new();

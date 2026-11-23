@@ -1,4 +1,4 @@
-# PDF 에디터 기능 명세
+# HumblePDF 기능 명세
 
 초안 v0.1 · 2026-11-13
 
@@ -240,7 +240,7 @@ type Signature = { id: string; type: "signature"; signatureId: string; rect: Rec
 - 원본 페이지에 있던 주석(링크, 다른 프로그램의 주석, 양식 위젯)은 그대로 둔다. 7.7절에서 객체로 되살린 주석만 뺀다.
 - 여러 페이지가 공유하는 Resources 사전을 고칠 때는 복사한 뒤 고친다.
 - 암호화된 소스는 복호화해 쓰고 출력에는 암호를 걸지 않는다.
-- `/Producer`에는 앱 이름과 버전을 쓴다. 작성자나 사용자 이름은 쓰지 않는다.
+- `/Producer`에는 앱 이름과 버전(`HumblePDF <버전>`)을 쓴다. 작성자나 사용자 이름은 쓰지 않는다.
 
 ### 7.2 이미지 페이지
 
@@ -401,5 +401,6 @@ type Signature = { id: string; type: "signature"; signatureId: string; rect: Rec
 
 - 지금은 설치 프로그램 없이 exe 하나로 실행한다. WebView2는 Windows 11에 들어 있다.
 - 저장소는 처음부터 공개해도 되는 상태로 유지한다. 개인 파일과 비밀 값을 넣지 않고 의존성의 라이선스를 확인한다.
+- 공개 전에 상표 검색(KIPRIS)으로 "HumblePDF"를 확인한다(DECISIONS D34).
 - 공개 전에 할 일(M7): 라이선스 파일, 서드파티 고지(PDF.js Apache-2.0, Pretendard OFL 1.1 등), README, CI(fmt, clippy, 테스트, 빌드), 릴리스 워크플로(포터블 exe).
 - 후순위: 설치 프로그램, 코드 서명(서명이 없는 exe는 Windows SmartScreen 경고가 뜬다), 자동 업데이트.

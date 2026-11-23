@@ -11,9 +11,9 @@ let built = false;
 
 /** Builds (once per process) and returns the path of the debug CLI binary. */
 export function cliPath(): string {
-  const exe = join(repoRoot, "target", "debug", process.platform === "win32" ? "pdf-editor-cli.exe" : "pdf-editor-cli");
+  const exe = join(repoRoot, "target", "debug", process.platform === "win32" ? "humblepdf-cli.exe" : "humblepdf-cli");
   if (!built) {
-    execFileSync("cargo", ["build", "-q", "-p", "pdf-editor-cli"], { cwd: repoRoot, stdio: "inherit" });
+    execFileSync("cargo", ["build", "-q", "-p", "humblepdf-cli"], { cwd: repoRoot, stdio: "inherit" });
     built = true;
   }
   if (!existsSync(exe)) throw new Error(`CLI not found: ${exe}`);

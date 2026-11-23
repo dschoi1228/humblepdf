@@ -8,10 +8,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use common::*;
-use pdf_editor_core::CoreError;
-use pdf_editor_core::export::{ExportContext, export_to_file};
-use pdf_editor_core::model::{Document as Model, ImageFit, Rotation};
-use pdf_editor_core::source::{build_model, inspect_path};
+use humblepdf_core::CoreError;
+use humblepdf_core::export::{ExportContext, export_to_file};
+use humblepdf_core::model::{Document as Model, ImageFit, Rotation};
+use humblepdf_core::source::{build_model, inspect_path};
 
 /// pages_300.pdf draws its page number as `(N) Tj` in a second content stream.
 fn page_number(out: &lopdf::Document, id: lopdf::ObjectId) -> Option<u32> {

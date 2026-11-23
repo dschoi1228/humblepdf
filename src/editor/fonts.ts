@@ -4,8 +4,8 @@
 import jpUrl from "../../assets/fonts/PretendardJP-Common.ttf?url";
 import mainUrl from "../../assets/fonts/Pretendard-Regular.ttf?url";
 
-export const TEXT_FONT = "PdfEditorText";
-export const TEXT_FONT_JP = "PdfEditorTextJP";
+export const TEXT_FONT = "HumblePDFText";
+export const TEXT_FONT_JP = "HumblePDFTextJP";
 /** `font-family` value for text objects. */
 export const TEXT_FONT_FAMILY = `${TEXT_FONT}, ${TEXT_FONT_JP}`;
 export const TEXT_FONT_URLS = { main: mainUrl, jp: jpUrl };

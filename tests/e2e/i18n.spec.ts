@@ -4,10 +4,10 @@ import { expect, test } from "@playwright/test";
 import { fixtureUrl, waitForIdle, waitForRenders, watch } from "./helpers";
 
 const cases = [
-  { locale: "en-US", lang: "en", empty: "Add a PDF or an image", title: "PDF Editor" },
-  { locale: "ja-JP", lang: "ja", empty: "PDF または画像を追加してください", title: "PDF エディター" },
-  { locale: "ko-KR", lang: "ko", empty: "PDF나 이미지를 추가하세요", title: "PDF 에디터" },
-  { locale: "fr-FR", lang: "en", empty: "Add a PDF or an image", title: "PDF Editor" },
+  { locale: "en-US", lang: "en", empty: "Add a PDF or an image", title: "HumblePDF" },
+  { locale: "ja-JP", lang: "ja", empty: "PDF または画像を追加してください", title: "HumblePDF" },
+  { locale: "ko-KR", lang: "ko", empty: "PDF나 이미지를 추가하세요", title: "HumblePDF" },
+  { locale: "fr-FR", lang: "en", empty: "Add a PDF or an image", title: "HumblePDF" },
 ];
 
 for (const c of cases) {
@@ -44,7 +44,7 @@ test.describe("switching the language", () => {
     await expect(thumbs.first()).toHaveText("1 ページ");
     await expect(page.getByTestId("undo")).toHaveAttribute("aria-label", "元に戻す (Ctrl+Z)");
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
-    await expect(page).toHaveTitle("PDF エディター");
+    await expect(page).toHaveTitle("HumblePDF");
     // The document and its history are untouched by the language change.
     expect(await page.evaluate(() => window.__viewer!.dirty())).toBe(true);
     await expect(page.getByTestId("undo")).toBeEnabled();

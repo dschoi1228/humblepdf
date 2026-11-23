@@ -32,13 +32,13 @@ fn bindings_are_up_to_date() {
                 std::fs::remove_file(repo_dir.join(name)).unwrap();
             }
         }
-        pdf_editor_core::model::export_bindings(&repo_dir).unwrap();
+        humblepdf_core::model::export_bindings(&repo_dir).unwrap();
         return;
     }
 
-    let tmp = std::env::temp_dir().join(format!("pdf-editor-bindings-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("humblepdf-bindings-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);
-    pdf_editor_core::model::export_bindings(&tmp).unwrap();
+    humblepdf_core::model::export_bindings(&tmp).unwrap();
     let generated = read_dir_ts(&tmp);
     let committed = read_dir_ts(&repo_dir);
     let _ = std::fs::remove_dir_all(&tmp);

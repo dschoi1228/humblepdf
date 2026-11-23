@@ -1,18 +1,18 @@
-//! Headless front end of pdf-editor-core.
+//! Headless front end of humblepdf-core.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use pdf_editor_core::error::{CoreError, ErrorPayload};
-use pdf_editor_core::export::{ExportContext, ExportOptions};
+use humblepdf_core::error::{CoreError, ErrorPayload};
+use humblepdf_core::export::{ExportContext, ExportOptions};
 
 #[derive(Parser)]
 #[command(
-    name = "pdf-editor-cli",
+    name = "humblepdf-cli",
     version,
-    about = "pdf-editor core from the command line"
+    about = "HumblePDF core from the command line"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -70,7 +70,7 @@ fn print_json<T: serde::Serialize>(v: &T) {
 fn run(command: Command) -> Result<(), CoreError> {
     match command {
         Command::Inspect { file, password } => {
-            let info = pdf_editor_core::source::inspect_path(&file, password.as_deref())?;
+            let info = humblepdf_core::source::inspect_path(&file, password.as_deref())?;
             print_json(&info);
         }
         Command::Model { files, passwords } => {
@@ -85,7 +85,7 @@ fn run(command: Command) -> Result<(), CoreError> {
                     )
                 })
                 .collect();
-            print_json(&pdf_editor_core::source::build_model(&list)?);
+            print_json(&humblepdf_core::source::build_model(&list)?);
         }
         Command::Export {
             model,
@@ -95,14 +95,14 @@ fn run(command: Command) -> Result<(), CoreError> {
             flatten,
         } => {
             let text = std::fs::read_to_string(&model)?;
-            let doc: pdf_editor_core::model::Document =
+            let doc: humblepdf_core::model::Document =
                 serde_json::from_str(&text).map_err(|e| CoreError::InvalidModel(e.to_string()))?;
             let ctx = ExportContext {
                 passwords: split_pairs(&passwords)?,
                 signature_dir: signatures,
                 options: ExportOptions { flatten },
             };
-            let summary = pdf_editor_core::export::export_to_file(&doc, &ctx, &out)?;
+            let summary = humblepdf_core::export::export_to_file(&doc, &ctx, &out)?;
             print_json(&summary);
         }
     }

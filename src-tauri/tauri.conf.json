@@ -1,8 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "pdf-editor",
+  "productName": "HumblePDF",
+  "mainBinaryName": "HumblePDF",
   "version": "0.1.0",
-  "identifier": "com.pdfeditor.app",
+  "identifier": "io.github.dschoi1228.humblepdf",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "PDF Editor",
+        "title": "HumblePDF",
         "width": 1200,
         "height": 800,
         "dragDropEnabled": true

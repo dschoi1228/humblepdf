@@ -1,5 +1,6 @@
 {
-  "name": "pdf-editor",
+  "name": "humblepdf",
+  "description": "A humble little PDF tool: merge, sign, mark up. Fully offline.",
   "private": true,
   "version": "0.1.0",
   "license": "MIT",
@@ -12,8 +13,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:exe": "tauri build --no-bundle",
-    "bindings": "node scripts/run-with-env.mjs UPDATE_BINDINGS=1 -- cargo test -p pdf-editor-core --test bindings",
-    "fixtures": "cargo run -q -p pdf-editor-core --example gen_fixtures --release -- --large",
+    "bindings": "node scripts/run-with-env.mjs UPDATE_BINDINGS=1 -- cargo test -p humblepdf-core --test bindings",
+    "fixtures": "cargo run -q -p humblepdf-core --example gen_fixtures --release -- --large",
     "sample": "node scripts/sample.mjs",
     "fonts": "node scripts/fonts.mjs",
     "test": "vitest run",

@@ -1,17 +1,17 @@
 [package]
-name = "pdf-editor-cli"
-description = "Command-line front end of pdf-editor-core for headless verification"
+name = "humblepdf-cli"
+description = "Command-line front end of humblepdf-core (HumblePDF) for headless verification"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [[bin]]
-name = "pdf-editor-cli"
+name = "humblepdf-cli"
 path = "src/main.rs"
 
 [dependencies]
-pdf-editor-core.workspace = true
+humblepdf-core.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -19,7 +19,7 @@ export type MatchResult = {
 };
 
 // Same fallback order as the app (D32).
-const FONT_FAMILY = "PdfEditorBundled, PdfEditorBundledJP";
+const FONT_FAMILY = "HumblePDFBundled, HumblePDFBundledJP";
 let fontDataUrls: Promise<[string, string]> | null = null;
 
 async function toDataUrl(url: string, mime: string): Promise<string> {
@@ -94,8 +94,8 @@ export async function measurePage(args: {
     fontFamily: FONT_FAMILY,
     signatureUrl: (id) => sigs[id],
     fontFaceCss:
-      `@font-face{font-family:PdfEditorBundled;src:url(${font}) format("truetype");}` +
-      `@font-face{font-family:PdfEditorBundledJP;src:url(${fontJp}) format("truetype");}`,
+      `@font-face{font-family:HumblePDFBundled;src:url(${font}) format("truetype");}` +
+      `@font-face{font-family:HumblePDFBundledJP;src:url(${fontJp}) format("truetype");}`,
   });
   const composite = document.createElement("canvas");
   composite.width = base.width;

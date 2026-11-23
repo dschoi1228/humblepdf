@@ -7,10 +7,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use common::*;
-use pdf_editor_core::CoreError;
-use pdf_editor_core::export::{ExportContext, export_to_bytes, export_to_file};
-use pdf_editor_core::model::{Document as Model, ImageFit, Rotation};
-use pdf_editor_core::source::{build_model, inspect_path};
+use humblepdf_core::CoreError;
+use humblepdf_core::export::{ExportContext, export_to_bytes, export_to_file};
+use humblepdf_core::model::{Document as Model, ImageFit, Rotation};
+use humblepdf_core::source::{build_model, inspect_path};
 
 fn model_of(files: &[&str]) -> Model {
     let paths: Vec<_> = files.iter().map(|f| fixture(f)).collect();
@@ -113,7 +113,7 @@ fn merges_two_pdfs_a_jpeg_and_a_png() {
     let info = out.get_dictionary(info).unwrap();
     assert_eq!(
         info.get(b"Producer").unwrap().as_str().unwrap(),
-        pdf_editor_core::PRODUCER.as_bytes()
+        humblepdf_core::PRODUCER.as_bytes()
     );
     assert!(!info.has(b"Author"));
 

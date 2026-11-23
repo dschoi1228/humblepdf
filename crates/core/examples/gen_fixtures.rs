@@ -1,6 +1,6 @@
 //! Generates the synthetic test fixtures (SPEC 9). No real documents are used.
 //!
-//!   cargo run -p pdf-editor-core --example gen_fixtures --release [-- --large]
+//!   cargo run -p humblepdf-core --example gen_fixtures --release [-- --large]
 //!
 //! Small fixtures go to tests/fixtures/ (committed). `--large` also writes the
 //! ~50MB PDF to tests/fixtures/large/ (git-ignored).
@@ -10,13 +10,13 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use humblepdf_core::font::{FontSubsetBuilder, hex_string};
 use image::{ImageBuffer, Rgb, Rgba};
 use lopdf::encryption::crypt_filters::{Aes256CryptFilter, CryptFilter};
 use lopdf::{
     Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions,
     Stream, dictionary,
 };
-use pdf_editor_core::font::{FontSubsetBuilder, hex_string};
 
 /// Password of the encrypted fixtures. Synthetic, used only by tests.
 const FIXTURE_PASSWORD: &str = "fixture-pass";
@@ -24,7 +24,7 @@ const FIXTURE_PASSWORD: &str = "fixture-pass";
 type Box4 = [f64; 4];
 
 fn num(v: f64) -> Object {
-    pdf_editor_core::pdf_util::real(v)
+    humblepdf_core::pdf_util::real(v)
 }
 
 fn rect(b: Box4) -> Object {

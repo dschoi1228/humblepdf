@@ -7,16 +7,16 @@ mod common;
 use std::path::Path;
 
 use common::*;
-use lopdf::{Dictionary, Document, Object, ObjectId};
-use pdf_editor_core::CoreError;
-use pdf_editor_core::export::annot::OBJECT_KEY;
-use pdf_editor_core::export::{ExportContext, export_to_bytes};
-use pdf_editor_core::model::{
+use humblepdf_core::CoreError;
+use humblepdf_core::export::annot::OBJECT_KEY;
+use humblepdf_core::export::{ExportContext, export_to_bytes};
+use humblepdf_core::model::{
     Document as Model, Highlight, Line, PageObject, Point, Quad, Rect, Shape,
 };
-use pdf_editor_core::pdf_util::{as_number, resolve};
-use pdf_editor_core::shape_spec::arrow_length;
-use pdf_editor_core::source::build_model;
+use humblepdf_core::pdf_util::{as_number, resolve};
+use humblepdf_core::shape_spec::arrow_length;
+use humblepdf_core::source::build_model;
+use lopdf::{Dictionary, Document, Object, ObjectId};
 
 const YELLOW: [f64; 3] = [1.0, 0.92, 0.23];
 const RED: [f64; 3] = [0.898, 0.224, 0.208];

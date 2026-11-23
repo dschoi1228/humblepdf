@@ -1,6 +1,8 @@
-# PDF Editor (working title)
+# HumblePDF
 
-An offline PDF editor for Windows 11. It merges PDFs and images into one document, organizes
+A humble little PDF tool: merge, sign, mark up. Fully offline.
+
+HumblePDF is an offline PDF editor for Windows 11. It merges PDFs and images into one document, organizes
 pages, and adds highlights, shapes, text and signature images. Edits are non-destructive:
 source files are never modified, and saving always writes a new PDF.
 
@@ -53,7 +55,7 @@ tests).
 ```
 npm install
 npm run tauri dev        # run the app (development build)
-npm run build:exe        # portable exe at target/release/pdf-editor.exe
+npm run build:exe        # portable exe at target/release/HumblePDF.exe
 ```
 
 If PowerShell's execution policy blocks `npm.ps1`, use `npm.cmd` instead of `npm`.

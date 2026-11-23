@@ -6,14 +6,14 @@ use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 
 use common::*;
-use lopdf::{Dictionary, Document, Object, ObjectId};
-use pdf_editor_core::export::annot::OBJECT_KEY;
-use pdf_editor_core::export::{ExportContext, ExportOptions, export_to_bytes};
-use pdf_editor_core::model::{
+use humblepdf_core::export::annot::OBJECT_KEY;
+use humblepdf_core::export::{ExportContext, ExportOptions, export_to_bytes};
+use humblepdf_core::model::{
     Document as Model, PageObject, Point, Rect, Rotation, Signature, Text,
 };
-use pdf_editor_core::pdf_util::resolve;
-use pdf_editor_core::source::build_model;
+use humblepdf_core::pdf_util::resolve;
+use humblepdf_core::source::build_model;
+use lopdf::{Dictionary, Document, Object, ObjectId};
 
 fn repo_root() -> PathBuf {
     [env!("CARGO_MANIFEST_DIR"), "..", ".."].iter().collect()
@@ -72,7 +72,7 @@ fn nums(o: &Object) -> Vec<f64> {
     o.as_array()
         .unwrap()
         .iter()
-        .map(|v| pdf_editor_core::pdf_util::as_number(v).unwrap())
+        .map(|v| humblepdf_core::pdf_util::as_number(v).unwrap())
         .collect()
 }
 

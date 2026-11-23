@@ -1,6 +1,6 @@
 //! The frontend and the core must use the same shape numbers (CLAUDE.md rule 5).
 
-use pdf_editor_core::shape_spec::*;
+use humblepdf_core::shape_spec::*;
 
 #[test]
 fn frontend_constants_match_core() {

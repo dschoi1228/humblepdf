@@ -15,7 +15,7 @@ export const LOCALE_NAMES: Record<Locale, string> = { ko: "한국어", en: "Engl
 export const DEFAULT_LOCALE: Locale = "en";
 
 const DICTIONARIES: Record<Locale, Strings> = { ko, en, ja };
-const STORAGE_KEY = "pdf-editor.locale";
+const STORAGE_KEY = "humblepdf.locale";
 
 /** First supported language in the preference list (`navigator.languages`), else English. */
 export function detectLocale(preferred: readonly string[]): Locale {

@@ -1526,6 +1526,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "humblepdf"
+version = "0.1.0"
+dependencies = [
+ "humblepdf-core",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "humblepdf-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "humblepdf-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "humblepdf-core"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "lopdf",
+ "serde",
+ "serde_json",
+ "subsetter",
+ "thiserror 2.0.21",
+ "ts-rs",
+ "ttf-parser",
+]
+
+[[package]]
 name = "hybrid-array"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2528,42 +2564,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-link",
-]
-
-[[package]]
-name = "pdf-editor"
-version = "0.1.0"
-dependencies = [
- "pdf-editor-core",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
-]
-
-[[package]]
-name = "pdf-editor-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "pdf-editor-core",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "pdf-editor-core"
-version = "0.1.0"
-dependencies = [
- "image",
- "lopdf",
- "serde",
- "serde_json",
- "subsetter",
- "thiserror 2.0.21",
- "ts-rs",
- "ttf-parser",
 ]
 
 [[package]]

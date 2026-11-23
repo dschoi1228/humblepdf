@@ -4,9 +4,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use humblepdf_core::model::Rect;
+use humblepdf_core::pdf_util;
 use lopdf::{Document, Object, ObjectId};
-use pdf_editor_core::model::Rect;
-use pdf_editor_core::pdf_util;
 
 pub const FIXTURE_PASSWORD: &str = "fixture-pass";
 

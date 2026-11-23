@@ -15,7 +15,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const PASSWORD = "fixture-pass";
 
 function cli(args, capture = false) {
-  const r = spawnSync("cargo", ["run", "-q", "-p", "pdf-editor-cli", "--", ...args], {
+  const r = spawnSync("cargo", ["run", "-q", "-p", "humblepdf-cli", "--", ...args], {
     stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
     encoding: "utf8",
   });

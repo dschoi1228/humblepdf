@@ -3,7 +3,7 @@
 import type { Strings } from "./types";
 
 export const ja: Strings = {
-  appTitle: "PDF エディター",
+  appTitle: "HumblePDF",
   fileFilterName: "PDF と画像",
 
   toolbar: {

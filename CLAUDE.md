@@ -1,6 +1,6 @@
-# PDF 에디터 (가칭 `pdf-editor`)
+# HumblePDF (`humblepdf`)
 
-Windows 11용 오프라인 PDF 편집기다. 여러 PDF와 이미지의 병합, 페이지 정리, 서명 이미지 배치, 텍스트·하이라이트·도형 추가를 지원한다.
+합치고, 서명하고, 표시하는 소박한 PDF 도구다. Windows 11용 오프라인 PDF 편집기다. 여러 PDF와 이미지의 병합, 페이지 정리, 서명 이미지 배치, 텍스트·하이라이트·도형 추가를 지원한다.
 
 - 기능과 수용 기준: `docs/SPEC.md`
 - 결정 사항과 이유: `docs/DECISIONS.md`
@@ -43,7 +43,7 @@ npm run dev                  브라우저 모드(백엔드 mock)로 프런트엔
                              &signatures=/__fixtures/signatures/sig-demo.png 로 메모리 서명 보관함에 합성 서명을 넣는다.
                              브라우저 모드의 이미지는 core가 계산한 레이아웃(out/e2e/info/)이 있어야 열린다.
                              npm run e2e를 한 번 돌리면 생긴다. 저장은 out/ 아래에만 하며 디버그 CLI가 필요하다(같은 명령이 빌드)
-npm run build:exe            포터블 exe 빌드 → target/release/pdf-editor.exe (설치 프로그램 없음)
+npm run build:exe            포터블 exe 빌드 → target/release/HumblePDF.exe (설치 프로그램 없음)
 cargo test --workspace       코어·CLI 테스트 (출력 PDF 재파싱 테스트 포함)
 npm test                     프런트엔드 단위 테스트 (Vitest. 좌표 변환, core 상자 vs pdf.js)
 npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용). 준비 단계가 CLI를 빌드해 쓴다
@@ -55,12 +55,12 @@ npm run fixtures             합성 fixture 재생성 (tests/fixtures/, 50MB 파
 npm run bindings             Rust 모델 → src/bindings/*.ts 재생성
 npm run sample               out/m0_sample.pdf, out/m2_sample.pdf ~ out/m5_sample.pdf 생성 (사람 확인용, 확인 목록 출력)
 npm run fonts                일본어 폰트 서브셋 재생성 (assets/fonts/PretendardJP-Common.ttf). Python과 fontTools가 필요하다(개발 때만)
-cargo run -p pdf-editor-cli -- inspect <파일> [--password <pw>]
-cargo run -p pdf-editor-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
-cargo run -p pdf-editor-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]
+cargo run -p humblepdf-cli -- inspect <파일> [--password <pw>]
+cargo run -p humblepdf-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
+cargo run -p humblepdf-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]
 ```
 
-- 측정용 훅: 환경 변수 `PDF_EDITOR_BENCH=<pdf 경로>`로 exe를 실행하면 첫 쪽 표시 시간을 `PDF_EDITOR_BENCH_OUT` 파일(없으면 stdout)에 쓰고 종료한다.
+- 측정용 훅: 환경 변수 `HUMBLEPDF_BENCH=<pdf 경로>`로 exe를 실행하면 첫 쪽 표시 시간을 `HUMBLEPDF_BENCH_OUT` 파일(없으면 stdout)에 쓰고 종료한다.
 - 암호 fixture의 비밀번호는 `fixture-pass`다(합성 파일 전용).
 
 개발 환경은 Windows 11이다. 자동화는 npm 스크립트나 Rust로 작성하고 bash 전용 문법에 의존하지 않는다.

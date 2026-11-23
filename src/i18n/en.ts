@@ -2,7 +2,7 @@
 import type { Strings } from "./types";
 
 export const en: Strings = {
-  appTitle: "PDF Editor",
+  appTitle: "HumblePDF",
   fileFilterName: "PDFs and images",
 
   toolbar: {

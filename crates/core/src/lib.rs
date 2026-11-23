@@ -1,4 +1,4 @@
-//! Core of pdf-editor: the document model, source inspection and PDF export.
+//! Core of HumblePDF: the document model, source inspection and PDF export.
 //!
 //! This crate must not depend on Tauri or any UI code. All PDF bytes are produced here.
 //! Public functions return `Result` and never panic on bad input (SPEC 8).
@@ -16,4 +16,4 @@ pub mod write;
 pub use error::{CoreError, Result};
 
 /// Value written to `/Producer` (SPEC 7.1). Never contains a user name.
-pub const PRODUCER: &str = concat!("pdf-editor ", env!("CARGO_PKG_VERSION"));
+pub const PRODUCER: &str = concat!("HumblePDF ", env!("CARGO_PKG_VERSION"));

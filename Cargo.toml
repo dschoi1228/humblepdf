@@ -9,7 +9,7 @@ license = "MIT"
 publish = false
 
 [workspace.dependencies]
-pdf-editor-core = { path = "crates/core" }
+humblepdf-core = { path = "crates/core" }
 lopdf = { version = "=0.47.0", default-features = false }
 subsetter = { version = "=0.2.6", default-features = false }
 ttf-parser = "=0.25.1"

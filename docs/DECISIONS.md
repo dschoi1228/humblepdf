@@ -203,7 +203,7 @@
   - 현재 언어는 Zustand 저장소 하나에 둔다. 컴포넌트는 `useStrings()`, 컴포넌트 밖 코드는 `strings()`를 쓴다.
   - 처음 언어: 저장해 둔 선택 → `navigator.languages`(WebView2는 Windows 표시 언어를 따른다)에서 처음 맞는 언어 → 영어.
   - 선택은 WebView의 `localStorage`에 둔다. 앱 데이터 폴더에 남으며 사용자 정보는 담지 않는다.
-  - 창 제목은 Tauri `setTitle`로 바꾼다(권한 `core:window:allow-set-title`). `tauri.conf.json`의 기본 제목은 `PDF Editor`다.
+  - 창 제목은 Tauri `setTitle`로 바꾼다(권한 `core:window:allow-set-title`). `tauri.conf.json`의 기본 제목은 `HumblePDF`다(D34).
 - 이유: 문자열이 60여 개이고 이미 한 곳에 모여 있어 i18next 같은 의존성이 주는 이점이 작다. 직접 만들면 키 검사를 타입으로 할 수 있다.
 - 범위 밖: 오른쪽에서 왼쪽으로 쓰는 언어, 날짜·숫자 형식 지역화(지금은 쓰는 곳이 없다). 일본어 번역은 공개 전에 원어민 검토가 필요하다.
 
@@ -234,7 +234,7 @@
 ### D30. 서명 보관함 (M4)
 
 - 결정
-  - 위치: `%APPDATA%\com.pdfeditor.app\signatures\`(Tauri `app_data_dir` 아래). 서명마다 `<id>.png`, 목록은 `index.json`(id, 이름, 픽셀 크기, 등록 시각).
+  - 위치: `%APPDATA%\io.github.dschoi1228.humblepdf\signatures\`(D34 이전에는 `com.pdfeditor.app`)(Tauri `app_data_dir` 아래). 서명마다 `<id>.png`, 목록은 `index.json`(id, 이름, 픽셀 크기, 등록 시각).
   - id는 무작위 영숫자(`sg-` + 16자리 16진수)다. 파일 이름이 되므로 core와 같은 문자만 허용한다. 이름은 1~100자다.
   - 쓰기는 모두 임시 파일 뒤 이름 바꾸기(core `write_atomic`)다.
   - 등록할 때 core의 `signature::normalize`가 PNG·JPG를 읽어 EXIF 방향을 반영하고, 긴 변을 2000px 이하로 줄여(Lanczos3) RGBA PNG로 만든다. 고른 원본 파일은 읽기만 한다.
@@ -263,7 +263,7 @@
   - 남기는 글자: JIS X 0208 전체(가나, 기호, 제1·제2수준 한자 6,355자), 반각 가타카나, 전각 영숫자. 요청 7,002자 중 6,831자가 들어 있다. 빠진 것은 원본에 없는 수학·괘선 기호와 반각 가타카나다. (사용자 선택: 제1+제2수준. 제1수준만은 0.88MB이지만 2010년 추가 상용한자 약 70자가 빠진다.)
   - 서브셋은 `npm run fonts`(fontTools, 개발 때만)로 만든다. 힌팅과 레이아웃 기능(GSUB/GPOS 규칙)은 넣지 않는다. 화면에 필요한 `cmap`을 남기기 위해 core의 `subsetter` 대신 fontTools를 쓴다.
   - 글자마다 Pretendard에 있으면 Pretendard, 없으면 Pretendard JP, 둘 다 없으면 빈칸이고 저장할 때 알린다. Pretendard에도 가나가 있어 가나는 Pretendard로, 한자는 Pretendard JP로 그려진다. 두 폰트는 같은 계열이라 섞여도 어울리고 세로 수치(어센트 1949, 디센트 494 / 2048)가 같다.
-  - core는 쓰인 폰트만 각각 서브셋으로 넣는다(`FontSet`). 화면은 `font-family: PdfEditorText, PdfEditorTextJP`의 글자별 대체로 같은 결과를 낸다.
+  - core는 쓰인 폰트만 각각 서브셋으로 넣는다(`FontSet`). 화면은 `font-family: HumblePDFText, HumblePDFTextJP`의 글자별 대체로 같은 결과를 낸다.
 - 이유: 일본어 사용자도 텍스트를 쓸 수 있어야 한다. 한자 전체(약 1.4만 자 이상)를 넣으면 exe가 많이 커진다. 화면 디자인과 같은 계열 폰트다.
 - 대안: Noto Sans JP(OFL)도 가능하지만 Pretendard와 모양이 다르고, Google Fonts 배포는 가변 폰트다.
 
@@ -278,14 +278,27 @@
   - 속성은 글자 크기(6~72pt)와 색(8색)이고 도구별로 기억한다(D29).
 - 이유: 브라우저 입력 상자가 한글·일본어 조합을 가장 정확하게 처리한다. 직접 그리는 편집기는 IME 처리를 다시 만들어야 한다.
 
-## 미정
+### D34. 앱 이름: HumblePDF
 
+- 결정
+  - 표시 이름 `HumblePDF`(띄어 쓰지 않고, 한국어·일본어 UI에서도 영문 그대로), 소문자 표기 `humblepdf`(저장소·패키지·CLI).
+  - 실행 파일 `HumblePDF.exe`: Tauri `mainBinaryName`으로 정한다. Cargo 패키지는 소문자(`humblepdf`, `humblepdf-core`, `humblepdf-cli`)로 둔다. 대문자 바이너리 이름은 Rust 크레이트 이름 경고에 걸린다.
+  - 식별자 `io.github.dschoi1228.humblepdf`. 앱 데이터 폴더도 이 이름이다.
+  - 한 줄 소개: "합치고, 서명하고, 표시하는 소박한 PDF 도구" / "A humble little PDF tool: merge, sign, mark up. Fully offline."
+  - `/Producer`는 `HumblePDF <버전>`이다.
+  - 바꾸지 않는 것: PDF 안에 쓰는 이름(`/PdfEditorObject`, 리소스 접두어 `PdfEd`)은 파일 형식의 일부라 그대로 둔다. 지난 마일스톤 보고서도 그때의 기록으로 둔다.
+  - 옛 식별자(`com.pdfeditor.app`)로 생긴 데이터 폴더는 옮기지 않는다(마이그레이션 코드 없음).
+- 이유: 필요한 기능만 있는 소박한 도구라는 성격을 이름에 담았다. 2026-11-23 웹 검색 기준으로 같은 이름의 PDF 도구는 없다.
+- 알려진 연상: Humble Bundle. 분야가 달라 받아들인다.
+- 검토한 대안: BantamPDF, HermitPDF, ClinchPDF, 가뿐PDF.
+- 남은 일: 공개 전에 상표 검색(KIPRIS)으로 확인한다(SPEC 11장).
+
+## 미정
 | 항목 | 기본 제안 | 정할 시점 |
 |---|---|---|
-| 앱 이름과 식별자 | 가칭 `pdf-editor`, 식별자 `com.pdfeditor.app` | 공개 전. M0는 가칭으로 진행 |
 | 라이선스 | MIT | 공개 전 |
 
-확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31), 일본어 폰트(D32), 텍스트 편집(D33).
+확정된 항목: TypeScript 타입 생성(D15), E2E 도구(D20), 패키지 매니저 npm(M0-1), UI(D22), 상태 관리(D23), 썸네일 정렬(D24), 다국어 UI(D27), 편집 오버레이(D28), 도구와 편집 막대(D29), 서명 보관함(D30), 서명 배치(D31), 일본어 폰트(D32), 텍스트 편집(D33), 앱 이름(D34).
 ## 고정한 버전 (2026-11-13, M0·M1)
 
 정확한 버전으로 고정한다(`Cargo.toml`의 `=`, `package.json`의 정확한 버전). crates.io의 `tauri` 최신판은 3.0.0-alpha이므로 2.x를 명시한다.

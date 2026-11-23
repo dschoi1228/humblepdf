@@ -8,13 +8,13 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use common::*;
+use humblepdf_core::export::annot::OBJECT_KEY;
+use humblepdf_core::export::{ExportContext, export_to_bytes};
+use humblepdf_core::font::{FontSet, JP_FONT};
+use humblepdf_core::model::{Document as Model, PageObject, Point, Text};
+use humblepdf_core::pdf_util::resolve;
+use humblepdf_core::source::build_model;
 use lopdf::{Dictionary, Document, Object, ObjectId};
-use pdf_editor_core::export::annot::OBJECT_KEY;
-use pdf_editor_core::export::{ExportContext, export_to_bytes};
-use pdf_editor_core::font::{FontSet, JP_FONT};
-use pdf_editor_core::model::{Document as Model, PageObject, Point, Text};
-use pdf_editor_core::pdf_util::resolve;
-use pdf_editor_core::source::build_model;
 
 fn deref<'a>(doc: &'a Document, o: &'a Object) -> &'a Object {
     resolve(doc, o).unwrap()
@@ -23,7 +23,7 @@ fn deref<'a>(doc: &'a Document, o: &'a Object) -> &'a Object {
 fn text_obj(
     id: &str,
     at: Point,
-    rotation: pdf_editor_core::model::Rotation,
+    rotation: humblepdf_core::model::Rotation,
     lines: &[&str],
 ) -> PageObject {
     PageObject::Text(Text {

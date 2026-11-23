@@ -141,7 +141,7 @@ export default function App() {
         .load()
         .catch((e) => toast.error(strings().signatures.failed, { description: errorMessage(isBackendError(e) ? e.code : "generic") }));
       void (async () => {
-        // Measurement hook (PDF_EDITOR_BENCH / ?bench=): time to the first drawn page.
+        // Measurement hook (HUMBLEPDF_BENCH / ?bench=): time to the first drawn page.
         const bench = await backend.benchConfig();
         if (bench) {
           const t0 = performance.now();

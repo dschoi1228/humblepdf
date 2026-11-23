@@ -9,9 +9,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use pdf_editor_core::error::{CoreError, ErrorPayload};
-use pdf_editor_core::signature::normalize;
-use pdf_editor_core::write::write_atomic;
+use humblepdf_core::error::{CoreError, ErrorPayload};
+use humblepdf_core::signature::normalize;
+use humblepdf_core::write::write_atomic;
 use serde::{Deserialize, Serialize};
 
 const INDEX: &str = "index.json";

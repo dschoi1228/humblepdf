@@ -1,4 +1,4 @@
-//! Tauri shell. Commands stay thin: they call pdf-editor-core and do file I/O.
+//! Tauri shell. Commands stay thin: they call humblepdf-core and do file I/O.
 
 mod signatures;
 
@@ -8,10 +8,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use pdf_editor_core::error::{CoreError, ErrorPayload};
-use pdf_editor_core::export::{self, ExportContext, ExportSummary};
-use pdf_editor_core::model::Document;
-use pdf_editor_core::source::{self, SourceInfo};
+use humblepdf_core::error::{CoreError, ErrorPayload};
+use humblepdf_core::export::{self, ExportContext, ExportSummary};
+use humblepdf_core::model::Document;
+use humblepdf_core::source::{self, SourceInfo};
 use serde::Serialize;
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager, State};
@@ -195,16 +195,16 @@ async fn signature_bytes(id: String, app: AppHandle) -> Result<Response, ErrorPa
     blocking(move || signatures::bytes(&dir, &id).map(Response::new)).await
 }
 
-/// M0 measurement hook: when PDF_EDITOR_BENCH is set to a PDF path, the frontend opens it,
+/// M0 measurement hook: when HUMBLEPDF_BENCH is set to a PDF path, the frontend opens it,
 /// reports the time to first page through `bench_report`, and the app exits.
 #[tauri::command]
 fn bench_config() -> Option<String> {
-    std::env::var("PDF_EDITOR_BENCH").ok()
+    std::env::var("HUMBLEPDF_BENCH").ok()
 }
 
 #[tauri::command]
 fn bench_report(report: String, app: AppHandle) {
-    match std::env::var("PDF_EDITOR_BENCH_OUT") {
+    match std::env::var("HUMBLEPDF_BENCH_OUT") {
         Ok(out) => {
             if let Err(e) = std::fs::write(&out, &report) {
                 eprintln!("bench: cannot write {out}: {e}");

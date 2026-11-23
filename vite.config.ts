@@ -60,7 +60,7 @@ function exportRoute(): Plugin {
     }
     return null;
   };
-  const cliExe = resolve("target", "debug", process.platform === "win32" ? "pdf-editor-cli.exe" : "pdf-editor-cli");
+  const cliExe = resolve("target", "debug", process.platform === "win32" ? "humblepdf-cli.exe" : "humblepdf-cli");
   return {
     name: "export-route",
     apply: "serve",
@@ -95,7 +95,7 @@ function exportRoute(): Plugin {
           if (!out || (!isSource && !body.outPath.startsWith("/__out/"))) {
             return reply(400, { code: "io", message: "browser mode saves under /__out/ only" });
           }
-          if (!existsSync(cliExe)) return reply(500, { code: "internal", message: "run `cargo build -p pdf-editor-cli` first" });
+          if (!existsSync(cliExe)) return reply(500, { code: "internal", message: "run `cargo build -p humblepdf-cli` first" });
           const work = resolve("out", "e2e", "export");
           mkdirSync(work, { recursive: true });
           mkdirSync(dirname(out), { recursive: true });
