@@ -1,13 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!-- HumblePDF app icon (D42): a red document with a folded corner, the letters PDF and a
        signature stroke. Letters are strokes, not text, so no font is needed to render it.
+       The page fills most of the square so the icon is not small next to other app icons.
        `npm run icons` builds src-tauri/icons from this file. -->
-  <path d="M256 64 H608 L832 288 V896 Q832 960 768 960 H256 Q192 960 192 896 V128 Q192 64 256 64 Z" fill="#D7261E"/>
-  <path d="M608 64 V224 Q608 288 672 288 H832 Z" fill="#F4A19C"/>
-  <g fill="none" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" transform="translate(-16 0)">
+  <path d="M176 48 H672 L912 288 V912 Q912 976 848 976 H176 Q112 976 112 912 V112 Q112 48 176 48 Z" fill="#D7261E"/>
+  <path d="M672 48 V224 Q672 288 736 288 H912 Z" fill="#F4A19C"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" transform="translate(512 672) scale(1.32) translate(-527 -640)">
     <path d="M300 760 V520 H350 A70 70 0 0 1 350 660 H300"/>
     <path d="M477 520 H515 C575 520 607 570 607 640 C607 710 575 760 515 760 H477 Z"/>
     <path d="M674 760 V520 H760 M674 640 H740"/>
   </g>
-  <path d="M290 400 C340 320 390 450 440 380 S530 330 560 390 S640 410 690 360" fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  <path d="M290 400 C340 320 390 450 440 380 S530 330 560 390 S640 410 690 360" fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" transform="translate(512 360) scale(1.2) translate(-490 -385)"/>
 </svg>
