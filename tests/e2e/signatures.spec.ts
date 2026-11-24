@@ -88,6 +88,10 @@ test("library: add, rename and delete; a placed signature cannot be deleted", as
     const chooser = page.waitForEvent("filechooser");
     await page.getByTestId("signature-add").click();
     await (await chooser).setFiles(file);
+    // The image is added after its preview (D44).
+    await expect(page.getByTestId("signature-import")).toHaveAttribute("data-ready", "true");
+    await page.getByTestId("signature-import-save").click();
+    await expect(page.getByTestId("signature-import")).toHaveCount(0);
   };
   await addFile(join(fixturesDir, "signatures", "sig-demo.png"));
   await addFile(join(fixturesDir, "exif_rotate90.jpg"));

@@ -62,6 +62,7 @@ cargo run -p humblepdf-cli -- inspect <파일> [--password <pw>]
 cargo run -p humblepdf-cli -- model <파일...>          모든 쪽을 담은 모델 JSON 출력
 cargo run -p humblepdf-cli -- export --model <json> --out <pdf> [--signatures <폴더>] [--password <소스ID>=<pw>] [--flatten]
 cargo run -p humblepdf-cli -- render-bytes <파일> --out <pdf> [--password <pw>]   되살린 주석을 뺀 렌더링용 PDF
+cargo run -p humblepdf-cli -- signature <이미지> --out <png> [--remove-white <0-100>] [--max-side <px>]   서명 보관함과 같은 정규화
 ```
 
 - CI: GitHub Actions(`.github/workflows/ci.yml`)가 push·PR마다 위 검사를 모두 돌린다. 릴리스는 `v*` 태그로 초안을 만든다(`release.yml`, 절차는 `docs/RELEASE_CHECKLIST.md`).

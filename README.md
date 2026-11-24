@@ -40,7 +40,9 @@ Delete those folders to remove everything the app has stored.
   other viewers can move or delete
 - Text in Korean, English and Japanese, saved as FreeText annotations with embedded font
   subsets
-- A signature library (PNG/JPG) and signature placement; signatures are baked into the page
+- A signature library (PNG/JPG) and signature placement; signatures are baked into the page.
+  Remove the white background of a photographed signature (with a strength slider), or draw
+  a signature in black or blue
 - Copy, paste and duplicate objects; undo and redo for everything
 - Reopen a file saved by HumblePDF: its highlights, shapes and text come back editable
 - Export a flattened copy with every object baked into the pages
