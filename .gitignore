@@ -30,3 +30,6 @@ node_modules/
 /tests/fixtures/*_평탄화.pdf
 /tests/fixtures/*_flattened.pdf
 /tests/fixtures/*_平坦化.pdf
+/tests/fixtures/*_발췌.pdf
+/tests/fixtures/*_extract.pdf
+/tests/fixtures/*_抜粋.pdf

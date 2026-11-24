@@ -4,13 +4,15 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { backend, isBackendError } from "../backend";
 import { isDirty, useDocumentStore } from "../state/documentStore";
-import { exportModel } from "../state/model";
+import { exportModel, pagesDocument } from "../state/model";
 import { useViewStore } from "../state/viewStore";
 import { errorMessage, strings } from "../i18n";
 import { clearThumbnails } from "../viewer/thumbCache";
 import { clearPageBitmaps } from "../viewer/pageBitmapCache";
 import { clearSources } from "../viewer/sourceCache";
 import { defaultSavePath, formatBytes, withPdfExtension } from "./savePath";
+import { targetPageIds } from "./pageActions";
+import type { Document } from "../bindings/Document";
 
 /** Progress indicator state (the saving dialog reads it). */
 export const useSaveStatus = create<{ saving: boolean }>(() => ({ saving: false }));
@@ -18,13 +20,17 @@ export const useSaveStatus = create<{ saving: boolean }>(() => ({ saving: false 
 type ExportResult = "ok" | "is_source" | "failed";
 
 /**
- * Writes the document to `path`. A flattened export (D37) bakes every object and is not a
- * save: the Ctrl+S target and the "no changes" state stay as they are.
+ * How a write counts: "save" sets the Ctrl+S target and clears "unsaved changes". A
+ * flattened export (D37) and an export of selected pages (D43) leave both as they are.
  */
-async function exportTo(path: string, flatten = false): Promise<ExportResult> {
+type ExportKind = "save" | "flatten" | "pages";
+
+/** Writes the document, or `part` of it for "pages", to `path`. */
+async function exportTo(path: string, kind: ExportKind = "save", part?: Document): Promise<ExportResult> {
   const st = useDocumentStore.getState();
   const doc = st.doc;
-  const model = exportModel(doc);
+  const flatten = kind === "flatten";
+  const model = exportModel(part ?? doc);
   const passwords: Record<string, string> = {};
   let encrypted = false;
   for (const s of model.sources) {
@@ -35,10 +41,12 @@ async function exportTo(path: string, flatten = false): Promise<ExportResult> {
   useSaveStatus.setState({ saving: true });
   try {
     const summary = await backend.exportDocument(model, path, passwords, flatten);
-    if (!flatten) useDocumentStore.getState().markSaved(doc, path);
+    if (kind === "save") useDocumentStore.getState().markSaved(doc, path);
     const name = path.split(/[\\/]/).pop() ?? path;
     const detail = strings().save.savedDetail(summary.pageCount, formatBytes(summary.bytes));
-    toast.success(flatten ? strings().save.flattened(name) : strings().save.saved(name), {
+    const title =
+      kind === "flatten" ? strings().save.flattened(name) : kind === "pages" ? strings().save.pagesExported(name) : strings().save.saved(name);
+    toast.success(title, {
       description: flatten ? `${detail} · ${strings().save.flattenedNote}` : detail,
     });
     if (encrypted) toast.info(strings().save.notEncrypted);
@@ -83,7 +91,25 @@ export async function exportFlattened(): Promise<boolean> {
   for (;;) {
     const picked = await backend.pickSavePath(suggestion);
     if (!picked) return false;
-    const r = await exportTo(withPdfExtension(picked), true);
+    const r = await exportTo(withPdfExtension(picked), "flatten");
+    if (r !== "is_source") return r === "ok";
+  }
+}
+
+/**
+ * "Export pages" (SPEC 6.3, D43): the selected pages, or the current page, in document order,
+ * written like a save but not counted as one.
+ */
+export async function exportPages(): Promise<boolean> {
+  const st = useDocumentStore.getState();
+  if (useSaveStatus.getState().saving) return false;
+  const part = pagesDocument(st.doc, targetPageIds());
+  if (!part.pages.length) return false;
+  const suggestion = defaultSavePath(part, st.sources, strings().save.pagesSuffix);
+  for (;;) {
+    const picked = await backend.pickSavePath(suggestion);
+    if (!picked) return false;
+    const r = await exportTo(withPdfExtension(picked), "pages", part);
     if (r !== "is_source") return r === "ok";
   }
 }

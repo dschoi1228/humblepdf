@@ -37,6 +37,7 @@ export const en: Strings = {
     imageFit: "Image fit",
     fitA4: "Fit to A4",
     fitImage: "Image size",
+    exportPages: (n: number) => `Export ${n} page${n === 1 ? "" : "s"}…`,
   },
 
   password: {
@@ -60,6 +61,8 @@ export const en: Strings = {
     defaultSuffix: "_edited",
     flatten: "Export flattened",
     flattenSuffix: "_flattened",
+    pagesSuffix: "_extract",
+    pagesExported: (name: string) => `Exported to "${name}".`,
     flattened: (name: string) => `Exported a flattened copy to "${name}".`,
     flattenedNote: "Objects are baked into the pages and can't be edited when reopened.",
     saving: "Saving…",

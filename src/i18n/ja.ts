@@ -38,6 +38,7 @@ export const ja: Strings = {
     imageFit: "画像の配置",
     fitA4: "A4 に合わせる",
     fitImage: "画像のサイズ",
+    exportPages: (n: number) => `${n}ページをエクスポート…`,
   },
 
   password: {
@@ -61,6 +62,8 @@ export const ja: Strings = {
     defaultSuffix: "_編集",
     flatten: "平坦化してエクスポート",
     flattenSuffix: "_平坦化",
+    pagesSuffix: "_抜粋",
+    pagesExported: (name: string) => `「${name}」にエクスポートしました。`,
     flattened: (name: string) => `「${name}」に平坦化してエクスポートしました。`,
     flattenedNote: "オブジェクトをページに焼き込みました。再度開いても編集できません。",
     saving: "保存中…",

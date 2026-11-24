@@ -1,9 +1,10 @@
-// Right-click menu of the thumbnail panel (SPEC 6.3): rotate, delete, image fit. Acts on
+// Right-click menu of the thumbnail panel (SPEC 6.3): rotate, delete, export, image fit. Acts on
 // the selected pages (the panel selects the clicked page first if it was not selected).
-import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { FileOutput, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { exportPages } from "../app/save";
 import { useState, type ReactNode } from "react";
 import type { ImageFit } from "../bindings/ImageFit";
-import { deleteTargets, imageTargets, rotateTargets, setFitOfTargets } from "../app/pageActions";
+import { deleteTargets, imageTargets, rotateTargets, setFitOfTargets, targetPageIds } from "../app/pageActions";
 import { useStrings } from "../i18n";
 import {
   ContextMenu,
@@ -20,10 +21,15 @@ import {
 export function PageContextMenu(props: { children: ReactNode }) {
   const t = useStrings();
   const [images, setImages] = useState<{ count: number; fit: ImageFit | null }>({ count: 0, fit: null });
+  const [pageCount, setPageCount] = useState(0);
   return (
     // Non-modal: a modal menu hides the app with aria-hidden while the clicked thumbnail
     // still has focus (browser warning).
-    <ContextMenu modal={false} onOpenChange={(open) => open && setImages(imageTargets())}>
+    <ContextMenu modal={false} onOpenChange={(open) => {
+        if (!open) return;
+        setImages(imageTargets());
+        setPageCount(targetPageIds().size);
+      }}>
       <ContextMenuTrigger asChild>{props.children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52" data-testid="page-menu">
         <ContextMenuItem onSelect={() => rotateTargets(-90)}>
@@ -40,6 +46,11 @@ export function PageContextMenu(props: { children: ReactNode }) {
           <Trash2 />
           {t.pages.delete}
           <ContextMenuShortcut>Del</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={() => void exportPages()} data-testid="export-pages">
+          <FileOutput />
+          {t.pages.exportPages(pageCount)}
         </ContextMenuItem>
         {images.count > 0 && (
           <>

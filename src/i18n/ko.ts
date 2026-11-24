@@ -36,6 +36,7 @@ export const ko = {
     imageFit: "이미지 맞춤",
     fitA4: "A4에 맞춤",
     fitImage: "이미지 크기",
+    exportPages: (n: number) => `${n}쪽 내보내기…`,
   },
 
   password: {
@@ -59,6 +60,8 @@ export const ko = {
     defaultSuffix: "_편집",
     flatten: "평탄화하여 내보내기",
     flattenSuffix: "_평탄화",
+    pagesSuffix: "_발췌",
+    pagesExported: (name: string) => `"${name}"(으)로 내보냈습니다.`,
     flattened: (name: string) => `"${name}"(으)로 평탄화하여 내보냈습니다.`,
     flattenedNote: "객체를 페이지에 구웠습니다. 다시 열어도 편집할 수 없습니다.",
     saving: "저장 중…",

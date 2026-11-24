@@ -137,6 +137,11 @@ export function setImageFit(
 }
 
 /** The model sent to export: sources no page uses are left out. */
+/** Only the given pages, in document order, with their objects (SPEC 6.3, M8). */
+export function pagesDocument(doc: Document, ids: ReadonlySet<string>): Document {
+  return { ...doc, pages: doc.pages.filter((p) => ids.has(p.id)) };
+}
+
 export function exportModel(doc: Document): Document {
   const used = new Set(doc.pages.map((p) => p.sourceId));
   return { ...doc, sources: doc.sources.filter((s) => used.has(s.id)) };

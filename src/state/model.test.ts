@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SourceInfo } from "../bindings/SourceInfo";
 import { openFiles } from "../files/addFiles";
-import { appendSources, baseName, compareFileNames, emptyDocument } from "./model";
+import { defaultSavePath } from "../app/savePath";
+import { appendSources, baseName, compareFileNames, emptyDocument, exportModel, pagesDocument, rotatePages } from "./model";
 
 const pdfInfo = (n: number): SourceInfo => ({
   kind: "pdf",
@@ -133,5 +134,48 @@ describe("restored objects (SPEC 7.7)", () => {
     expect(ids).not.toContain("saved-id");
     expect(doc.pages[0].objects[0]).toMatchObject({ type: "rect", rect: rect.rect });
     expect(restoredCount([entry("a"), entry("b")])).toBe(4);
+  });
+});
+
+describe("pagesDocument (export pages, SPEC 6.3)", () => {
+  let n = 0;
+  const id = () => `p${++n}`;
+  const base = () => {
+    n = 0;
+    const r1 = appendSources(emptyDocument(), [{ sourceId: "a", path: "D:/d/a.pdf", name: "a.pdf", info: pdfInfo(3) }], id);
+    return appendSources(r1.doc, [{ sourceId: "b", path: "D:/d/b.png", name: "b.png", info: imageInfo }], id).doc;
+  };
+
+  it("keeps the given pages in document order with their rotation and objects", () => {
+    const d = rotatePages(base(), new Set(["p3"]), 90);
+    const withObject = {
+      ...d,
+      pages: d.pages.map((p) =>
+        p.id === "p1"
+          ? { ...p, objects: [{ type: "rect", id: "o1" } as never] }
+          : p,
+      ),
+    };
+    // Selection order does not matter: the output follows the document.
+    const part = pagesDocument(withObject, new Set(["p3", "p1"]));
+    expect(part.pages.map((p) => p.id)).toEqual(["p1", "p3"]);
+    expect(part.pages[0].objects).toHaveLength(1);
+    expect(part.pages[1].userRotation).toBe(90);
+    expect(part.pages[1].baseRotation).toBe(0);
+  });
+
+  it("leaves out the sources it does not use", () => {
+    const part = pagesDocument(base(), new Set(["p2"]));
+    expect(exportModel(part).sources.map((s) => s.id)).toEqual(["a"]);
+    expect(exportModel(pagesDocument(base(), new Set(["p4"]))).sources.map((s) => s.id)).toEqual(["b"]);
+  });
+
+  it("suggests <first source>_발췌.pdf next to that source", () => {
+    const part = pagesDocument(base(), new Set(["p4", "p2"]));
+    const sources = {
+      a: { id: "a", path: "D:/d/a.pdf", name: "a.pdf" },
+      b: { id: "b", path: "D:/d/b.png", name: "b.png" },
+    } as never;
+    expect(defaultSavePath(part, sources, "_발췌")).toBe("D:/d/a_발췌.pdf");
   });
 });
