@@ -7,8 +7,8 @@
 | 수용 기준 | 결과 | 확인 방법 |
 |---|---|---|
 | 1. 창 크기와 최근 설정이 유지된다. 오류 메시지와 단축키 도움말을 정리한다 | 통과. 창 크기·위치·최대화 유지는 사람이 확인(아래 "확인 뒤 고친 것" 1) | E2E `preferences.spec.ts`, 단위 테스트(설정 왕복·손상 값, 도움말 표 대 실제 단축키, 모든 오류 코드의 세 언어 메시지) |
-| 2. 11장의 공개 준비 항목을 갖춘다 | 갖춤. CI 통과(#4, 24분). **KIPRIS 상표 검색은 공개 전에 확인** | `LICENSE`, `THIRD_PARTY_NOTICES.md`, README, `.github/workflows/`, `docs/RELEASE_CHECKLIST.md` |
-| 3. 전체 사람 확인 점검표가 통과한다 | 1~6절 통과(M1~M6 확인과 M7 확인). 7절(KIPRIS)은 공개 전에 확인 | `docs/RELEASE_CHECKLIST.md` |
+| 2. 11장의 공개 준비 항목을 갖춘다 | 갖춤. CI 통과(#4, 24분). KIPRIS 상표 검색 확인(사용자) | `LICENSE`, `THIRD_PARTY_NOTICES.md`, README, `.github/workflows/`, `docs/RELEASE_CHECKLIST.md` |
+| 3. 전체 사람 확인 점검표가 통과한다 | 통과(1~6절: M1~M6 확인과 M7 확인, 7절: KIPRIS 확인) | `docs/RELEASE_CHECKLIST.md` |
 
 마지막 실행에서 다음이 모두 통과했다.
 
@@ -80,4 +80,4 @@
 5. **공개 전:** 점검표 7절(KIPRIS 상표 검색 등)
 6. **CI:** 통과(#4)
 
-1~4와 6은 확인했다. 5(KIPRIS)는 공개 전에 확인한다.
+모두 확인했다. 첫 릴리스는 `v0.1.0` 태그로 만든다.
