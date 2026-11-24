@@ -35,6 +35,7 @@ Delete those folders to remove everything the app has stored.
 - Continuous scrolling viewer with thumbnails and zoom from 25% to 400%
 - Reorder pages by dragging thumbnails, select multiple pages, delete and rotate them, and
   choose how image pages fit (A4 or image size)
+- Export only the selected pages to a new PDF
 - Highlights, rectangles, ellipses, lines and arrows, saved as standard PDF annotations that
   other viewers can move or delete
 - Text in Korean, English and Japanese, saved as FreeText annotations with embedded font
