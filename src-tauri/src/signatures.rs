@@ -1,6 +1,7 @@
 //! Signature library (SPEC 6.8, D30): `<id>.png` files and an `index.json` in one folder
 //! under the app data directory. Functions take the folder, so they are tested without
-//! Tauri. Images are normalized by the core when added; the chosen file is only read.
+//! Tauri. Images are normalized by the core when added; the chosen file is only read. Images
+//! may have their white background removed (D44); drawn signatures arrive as PNG bytes.
 //! Names and paths are never logged (D12).
 
 use std::collections::hash_map::RandomState;
@@ -10,13 +11,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use humblepdf_core::error::{CoreError, ErrorPayload};
-use humblepdf_core::signature::normalize;
+use humblepdf_core::signature::{NormalizeOptions, normalize_with};
 use humblepdf_core::write::write_atomic;
 use serde::{Deserialize, Serialize};
 
 const INDEX: &str = "index.json";
 /// Longest allowed name, in characters.
 pub const MAX_NAME: usize = 100;
+/// Longest side of the preview shown while choosing the white removal strength.
+pub const PREVIEW_SIDE: u32 = 800;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,11 +112,41 @@ pub fn list(dir: &Path) -> Result<Vec<SignatureMeta>, ErrorPayload> {
     Ok(read_index(dir)?.signatures)
 }
 
-/// Normalizes the image at `source` and adds it under `name`.
-pub fn add(dir: &Path, source: &Path, name: &str) -> Result<SignatureMeta, ErrorPayload> {
-    let name = clean_name(name)?;
+/// Normalizes the image at `source` (removing its white background when `remove_white` is
+/// a strength) and adds it under `name`.
+pub fn add(
+    dir: &Path,
+    source: &Path,
+    name: &str,
+    remove_white: Option<u8>,
+) -> Result<SignatureMeta, ErrorPayload> {
     let bytes = std::fs::read(source).map_err(io)?;
-    let n = normalize(&bytes).map_err(core)?;
+    add_bytes(dir, &bytes, name, remove_white)
+}
+
+/// The image at `source` as it would be stored, at most `PREVIEW_SIDE` pixels long (D44).
+pub fn preview(source: &Path, remove_white: Option<u8>) -> Result<Vec<u8>, ErrorPayload> {
+    let bytes = std::fs::read(source).map_err(io)?;
+    let options = NormalizeOptions {
+        remove_white,
+        max_side: PREVIEW_SIDE,
+    };
+    Ok(normalize_with(&bytes, &options).map_err(core)?.png)
+}
+
+/// Adds an image given as bytes (a drawn signature is a PNG); normalized like a file.
+pub fn add_bytes(
+    dir: &Path,
+    bytes: &[u8],
+    name: &str,
+    remove_white: Option<u8>,
+) -> Result<SignatureMeta, ErrorPayload> {
+    let name = clean_name(name)?;
+    let options = NormalizeOptions {
+        remove_white,
+        ..NormalizeOptions::default()
+    };
+    let n = normalize_with(bytes, &options).map_err(core)?;
     std::fs::create_dir_all(dir).map_err(io)?;
     let mut index = read_index(dir)?;
     let meta = SignatureMeta {
@@ -205,8 +238,8 @@ mod tests {
 
         let src = fixture("exif_rotate90.jpg");
         let before = hash(&src);
-        let a = add(&dir, &src, "  First  ").unwrap();
-        let b = add(&dir, &fixture("signatures/sig-demo.png"), "Second").unwrap();
+        let a = add(&dir, &src, "  First  ", None).unwrap();
+        let b = add(&dir, &fixture("signatures/sig-demo.png"), "Second", None).unwrap();
         assert_eq!(hash(&src), before, "the chosen file is only read");
         assert_eq!(a.name, "First");
         assert_ne!(a.id, b.id);
@@ -235,13 +268,17 @@ mod tests {
     #[test]
     fn bad_input_is_refused() {
         let dir = temp("bad");
-        let ok = add(&dir, &fixture("signatures/sig-demo.png"), "x").unwrap();
+        let ok = add(&dir, &fixture("signatures/sig-demo.png"), "x", None).unwrap();
         assert_eq!(
-            add(&dir, &fixture("rotated.pdf"), "pdf").unwrap_err().code,
+            add(&dir, &fixture("rotated.pdf"), "pdf", None)
+                .unwrap_err()
+                .code,
             "unknown_format"
         );
         assert_eq!(
-            add(&dir, &fixture("alpha.png"), "   ").unwrap_err().code,
+            add(&dir, &fixture("alpha.png"), "   ", None)
+                .unwrap_err()
+                .code,
             "invalid_name"
         );
         let long = "x".repeat(MAX_NAME + 1);
@@ -263,5 +300,37 @@ mod tests {
         }
         assert_eq!(list(&dir).unwrap().len(), 1);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn white_removal_preview_and_drawn_png() {
+        let dir = temp("white");
+        let src = fixture("signatures/sig-white.jpg");
+        let before = hash(&src);
+        // The preview is limited in size; with removal the paper corner is transparent.
+        let decode = |png: &[u8]| image::load_from_memory(png).unwrap().to_rgba8();
+        let plain = decode(&preview(&src, None).unwrap());
+        let cleared = decode(&preview(&src, Some(50)).unwrap());
+        assert!(plain.width().max(plain.height()) <= PREVIEW_SIDE);
+        assert_eq!(plain.get_pixel(2, 2)[3], 255);
+        assert_eq!(cleared.get_pixel(2, 2)[3], 0);
+
+        let a = add(&dir, &src, "Photo", Some(50)).unwrap();
+        let stored = decode(&bytes(&dir, &a.id).unwrap());
+        assert_eq!(
+            stored.get_pixel(2, 2)[3],
+            0,
+            "stored with the white removed"
+        );
+        assert_eq!(hash(&src), before, "the chosen file is only read");
+
+        // A drawn signature arrives as PNG bytes and is normalized like a file.
+        let drawn = std::fs::read(fixture("signatures/sig-demo.png")).unwrap();
+        let b = add_bytes(&dir, &drawn, "Drawn", None).unwrap();
+        assert_eq!(list(&dir).unwrap().len(), 2);
+        assert_eq!(b.name, "Drawn");
+        let err = add_bytes(&dir, b"not an image", "X", None).unwrap_err();
+        assert_eq!(err.code, "unknown_format");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

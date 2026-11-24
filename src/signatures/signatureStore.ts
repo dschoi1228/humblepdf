@@ -17,7 +17,10 @@ type State = {
   dialogOpen: boolean;
 
   load: () => Promise<void>;
-  add: (file: PickedFile, name: string) => Promise<SignatureMeta>;
+  /** Adds an image file, removing its white background unless `removeWhite` is null (D44). */
+  add: (file: PickedFile, name: string, removeWhite?: number | null) => Promise<SignatureMeta>;
+  /** Adds a drawn signature (PNG bytes). */
+  addPng: (png: Uint8Array, name: string) => Promise<SignatureMeta>;
   rename: (id: string, name: string) => Promise<void>;
   /** Rejects with `{ code: "in_use", pages }` when the document places the signature. */
   remove: (id: string) => Promise<void>;
@@ -44,8 +47,13 @@ export const useSignatureStore = create<State>((set, get) => ({
     const list = await backend.signatureList();
     set((s) => ({ list, loaded: true, current: s.current && list.some((x) => x.id === s.current) ? s.current : (list[0]?.id ?? null) }));
   },
-  add: async (file, name) => {
-    const meta = await backend.signatureAdd(file, name);
+  add: async (file, name, removeWhite = null) => {
+    const meta = await backend.signatureAdd(file, name, removeWhite);
+    set((s) => ({ list: [...s.list, meta], current: meta.id }));
+    return meta;
+  },
+  addPng: async (png, name) => {
+    const meta = await backend.signatureAddPng(png, name);
     set((s) => ({ list: [...s.list, meta], current: meta.id }));
     return meta;
   },

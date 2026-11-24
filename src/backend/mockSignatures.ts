@@ -1,7 +1,8 @@
 // Browser-mode signature library (D30): kept in memory for the page's lifetime. Images
 // are converted to PNG with a canvas and reduced to MAX_SIDE like the core does; the
 // core's normalization itself is checked by `cargo test`. `?signatures=url1,url2` adds
-// images at start (E2E tests, demos).
+// images at start (E2E tests, demos). White background removal (D44) and previews go
+// through the core via the dev server's /__signature route.
 import type { BackendError, PickedFile, SignatureMeta } from "./types";
 
 const MAX_SIDE = 2000;
@@ -47,14 +48,50 @@ function entry(id: string) {
   return e;
 }
 
-export async function mockSignatureAdd(file: PickedFile, name: string): Promise<SignatureMeta> {
-  const clean = cleanName(name);
+async function readFile(file: PickedFile): Promise<Uint8Array> {
   const res = await fetch(file.path);
   if (!res.ok) throw fail("io", `cannot read ${file.name}`);
-  const { png, width, height } = await toPng(new Uint8Array(await res.arrayBuffer()));
-  const meta: SignatureMeta = { id: `sg-mock-${++nextId}`, name: clean, width, height, added: Math.floor(Date.now() / 1000) };
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/** The core's normalization through the dev server (CLI `signature`). */
+async function corePng(bytes: Uint8Array, removeWhite: number | null, maxSide: number): Promise<Uint8Array> {
+  const q = new URLSearchParams({ maxSide: String(maxSide) });
+  if (removeWhite !== null) q.set("removeWhite", String(Math.round(removeWhite)));
+  const res = await fetch(`/__signature?${q}`, { method: "POST", body: bytes as BodyInit });
+  if (!res.ok) {
+    const e = (await res.json().catch(() => null)) as BackendError | null;
+    throw e ?? fail("internal", "signature route failed");
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+function store_(name: string, png: Uint8Array, width: number, height: number): SignatureMeta {
+  const meta: SignatureMeta = { id: `sg-mock-${++nextId}`, name, width, height, added: Math.floor(Date.now() / 1000) };
   store.set(meta.id, { meta, png });
   return meta;
+}
+
+export async function mockSignatureAdd(file: PickedFile, name: string, removeWhite: number | null = null): Promise<SignatureMeta> {
+  const clean = cleanName(name);
+  const bytes = await readFile(file);
+  if (removeWhite === null) {
+    const { png, width, height } = await toPng(bytes);
+    return store_(clean, png, width, height);
+  }
+  const png = await corePng(bytes, removeWhite, MAX_SIDE);
+  const { width, height } = await createImageBitmap(new Blob([png as BlobPart]));
+  return store_(clean, png, width, height);
+}
+
+export async function mockSignaturePreview(file: PickedFile, removeWhite: number | null): Promise<Uint8Array> {
+  return corePng(await readFile(file), removeWhite, 800);
+}
+
+export async function mockSignatureAddPng(png: Uint8Array, name: string): Promise<SignatureMeta> {
+  const clean = cleanName(name);
+  const r = await toPng(png);
+  return store_(clean, r.png, r.width, r.height);
 }
 
 function seed(): Promise<void> {

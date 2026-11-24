@@ -16,6 +16,8 @@ import { openPdf } from "../viewer/pdfjs";
 import type { Backend, BackendError, OpenedSource, PickedFile } from "./types";
 import {
   mockSignatureAdd,
+  mockSignatureAddPng,
+  mockSignaturePreview,
   mockSignatureBytes,
   mockSignatureDelete,
   mockSignatureFiles,
@@ -205,6 +207,8 @@ export const mockBackend: Backend = {
     return files?.[0] ?? null;
   },
   signatureAdd: mockSignatureAdd,
+  signaturePreview: mockSignaturePreview,
+  signatureAddPng: mockSignatureAddPng,
   signatureRename: mockSignatureRename,
   signatureDelete: mockSignatureDelete,
   signatureBytes: mockSignatureBytes,

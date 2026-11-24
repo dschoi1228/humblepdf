@@ -55,8 +55,16 @@ export interface Backend {
   signatureList(): Promise<SignatureMeta[]>;
   /** Shows the open dialog for one PNG or JPEG. Returns null when cancelled. */
   pickSignatureFile(): Promise<PickedFile | null>;
-  /** Normalizes and stores the image. Rejects with `unknown_format`, `invalid_image`, `invalid_name`. */
-  signatureAdd(file: PickedFile, name: string): Promise<SignatureMeta>;
+  /**
+   * Normalizes and stores the image, removing its white background with strength
+   * `removeWhite` (0..100) unless null (D44). Rejects with `unknown_format`, `invalid_image`,
+   * `invalid_name`.
+   */
+  signatureAdd(file: PickedFile, name: string, removeWhite: number | null): Promise<SignatureMeta>;
+  /** The image as it would be stored, reduced for a preview (PNG), D44. */
+  signaturePreview(file: PickedFile, removeWhite: number | null): Promise<Uint8Array>;
+  /** Stores a drawn signature (PNG bytes from the drawing pad), D44. */
+  signatureAddPng(png: Uint8Array, name: string): Promise<SignatureMeta>;
   signatureRename(id: string, name: string): Promise<SignatureMeta>;
   signatureDelete(id: string): Promise<void>;
   /** The stored PNG. */

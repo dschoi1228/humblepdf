@@ -198,14 +198,37 @@ async fn signature_list(app: AppHandle) -> Result<Vec<signatures::SignatureMeta>
     blocking(move || signatures::list(&dir)).await
 }
 
+/// Adds an image file; `remove_white` is the white removal strength, or none (D44).
 #[tauri::command]
 async fn signature_add(
     path: String,
     name: String,
+    remove_white: Option<u8>,
     app: AppHandle,
 ) -> Result<signatures::SignatureMeta, ErrorPayload> {
     let dir = signature_dir(&app)?;
-    blocking(move || signatures::add(&dir, &PathBuf::from(path), &name)).await
+    blocking(move || signatures::add(&dir, &PathBuf::from(path), &name, remove_white)).await
+}
+
+/// Adds a drawn signature (PNG bytes from the drawing pad, D44).
+#[tauri::command]
+async fn signature_add_png(
+    png: Vec<u8>,
+    name: String,
+    app: AppHandle,
+) -> Result<signatures::SignatureMeta, ErrorPayload> {
+    let dir = signature_dir(&app)?;
+    blocking(move || signatures::add_bytes(&dir, &png, &name, None)).await
+}
+
+/// The image as it would be stored, reduced for the dialog's preview, as PNG (D44).
+#[tauri::command]
+async fn signature_preview(
+    path: String,
+    remove_white: Option<u8>,
+) -> Result<Response, ErrorPayload> {
+    blocking(move || signatures::preview(&PathBuf::from(path), remove_white).map(Response::new))
+        .await
 }
 
 #[tauri::command]
@@ -320,6 +343,8 @@ pub fn run() {
             export_document,
             signature_list,
             signature_add,
+            signature_add_png,
+            signature_preview,
             signature_rename,
             signature_delete,
             signature_bytes,

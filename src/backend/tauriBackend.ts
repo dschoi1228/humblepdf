@@ -75,8 +75,17 @@ export const tauriBackend: Backend = {
     return toPicked([r])[0];
   },
 
-  signatureAdd(file, name) {
-    return invoke<SignatureMeta>("signature_add", { path: file.path, name });
+  signatureAdd(file, name, removeWhite) {
+    return invoke<SignatureMeta>("signature_add", { path: file.path, name, removeWhite });
+  },
+
+  async signaturePreview(file, removeWhite) {
+    // `tauri::ipc::Response` arrives as an ArrayBuffer.
+    return new Uint8Array(await invoke<ArrayBuffer>("signature_preview", { path: file.path, removeWhite }));
+  },
+
+  signatureAddPng(png, name) {
+    return invoke<SignatureMeta>("signature_add_png", { png: Array.from(png), name });
   },
 
   signatureRename(id, name) {

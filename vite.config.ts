@@ -113,6 +113,44 @@ function exportRoute(): Plugin {
           });
         }),
       );
+      // Signature images in browser mode (D44): POST the image bytes to
+      // /__signature?removeWhite=50&maxSide=800 and get the core's PNG back.
+      server.middlewares.use("/__signature", (req, res) => {
+        if (req.method !== "POST" || !existsSync(cliExe)) {
+          res.statusCode = req.method !== "POST" ? 405 : 500;
+          res.end();
+          return;
+        }
+        const q = new URL(req.url ?? "", "http://localhost").searchParams;
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          const work = resolve("out", "e2e", "signature");
+          mkdirSync(work, { recursive: true });
+          const tag = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const input = join(work, `in-${tag}`);
+          const out = join(work, `out-${tag}.png`);
+          writeFileSync(input, Buffer.concat(chunks));
+          const args = ["signature", input, "--out", out];
+          const strength = q.get("removeWhite");
+          if (strength && /^\d{1,3}$/.test(strength)) args.push("--remove-white", strength);
+          const side = q.get("maxSide");
+          if (side && /^\d{1,4}$/.test(side)) args.push("--max-side", side);
+          execFile(cliExe, args, { encoding: "utf8" }, (err, _stdout, stderr) => {
+            rmSync(input, { force: true });
+            if (err) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(stderr);
+              return;
+            }
+            const body = readFileSync(out);
+            rmSync(out, { force: true });
+            res.setHeader("Content-Type", "image/png");
+            res.end(body);
+          });
+        });
+      });
       server.middlewares.use("/__export", (req, res) => {
         const reply = (status: number, body: unknown) => {
           res.statusCode = status;

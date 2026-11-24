@@ -1530,6 +1530,7 @@ name = "humblepdf"
 version = "0.1.1"
 dependencies = [
  "humblepdf-core",
+ "image",
  "serde",
  "serde_json",
  "tauri",

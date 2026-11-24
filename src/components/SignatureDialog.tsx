@@ -1,12 +1,14 @@
-// Signature library dialog (SPEC 6.8, D30, D31): list with previews, add, rename, delete.
-import { Pencil, Plus, Trash2 } from "lucide-react";
+// Signature library dialog (SPEC 6.8, D30, D31, D44): list with previews, add an image (with
+// white background removal), draw, rename, delete.
+import { ImagePlus, Pencil, PenLine, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { backend, isBackendError } from "../backend";
-import type { SignatureMeta } from "../backend/types";
+import type { PickedFile, SignatureMeta } from "../backend/types";
+import { SignatureDraw, SignatureImport } from "./SignatureCreate";
 import { errorMessage, useStrings } from "../i18n";
 import { useSignatureStore, type InUseError } from "../signatures/signatureStore";
 
@@ -100,17 +102,33 @@ export function SignatureDialog() {
   const list = useSignatureStore((s) => s.list);
   const [busy, setBusy] = useState(false);
 
-  const add = async () => {
-    const file = await backend.pickSignatureFile();
-    if (!file) return;
+  const [mode, setMode] = useState<{ kind: "list" } | { kind: "import"; file: PickedFile } | { kind: "draw" }>({ kind: "list" });
+
+  // Each time the dialog opens it shows the list (state adjusted while rendering).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setMode({ kind: "list" });
+  }
+
+  const pick = async () => {
     setBusy(true);
     try {
-      const meta = await useSignatureStore.getState().add(file, fileStem(file.name));
-      toast.success(t.signatures.added(meta.name));
-    } catch (e) {
-      toast.error(t.signatures.failed, { description: errorMessage(isBackendError(e) ? e.code : "generic") });
+      const file = await backend.pickSignatureFile();
+      if (file) setMode({ kind: "import", file });
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** Runs an add; on success the dialog returns to the list. */
+  const added = async (run: () => Promise<SignatureMeta>) => {
+    try {
+      const meta = await run();
+      toast.success(t.signatures.added(meta.name));
+      setMode({ kind: "list" });
+    } catch (e) {
+      toast.error(t.signatures.failed, { description: errorMessage(isBackendError(e) ? e.code : "generic") });
     }
   };
 
@@ -121,22 +139,43 @@ export function SignatureDialog() {
           <DialogTitle>{t.signatures.title}</DialogTitle>
           <DialogDescription>{t.signatures.description}</DialogDescription>
         </DialogHeader>
-        {list.length ? (
-          <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-            {list.map((s) => (
-              <Row key={s.id} sig={s} />
-            ))}
-          </ul>
+        {mode.kind === "import" ? (
+          <SignatureImport
+            file={mode.file}
+            defaultName={fileStem(mode.file.name)}
+            onSave={(name, removeWhite) => added(() => useSignatureStore.getState().add(mode.file, name, removeWhite))}
+            onCancel={() => setMode({ kind: "list" })}
+          />
+        ) : mode.kind === "draw" ? (
+          <SignatureDraw
+            defaultName={t.signatures.drawnName(list.length + 1)}
+            onSave={(png, name) => added(() => useSignatureStore.getState().addPng(png, name))}
+            onCancel={() => setMode({ kind: "list" })}
+          />
         ) : (
-          <p className="text-sm text-neutral-500">{t.signatures.empty}</p>
+          <>
+            {list.length ? (
+              <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
+                {list.map((s) => (
+                  <Row key={s.id} sig={s} />
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-neutral-500">{t.signatures.empty}</p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => void pick()} disabled={busy} data-testid="signature-add">
+                <ImagePlus />
+                {t.signatures.add}
+              </Button>
+              <Button variant="outline" onClick={() => setMode({ kind: "draw" })} data-testid="signature-draw-open">
+                <PenLine />
+                {t.signatures.draw}
+              </Button>
+              <Button onClick={() => useSignatureStore.getState().closeDialog()}>{t.signatures.close}</Button>
+            </DialogFooter>
+          </>
         )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => void add()} disabled={busy} data-testid="signature-add">
-            <Plus />
-            {t.signatures.add}
-          </Button>
-          <Button onClick={() => useSignatureStore.getState().closeDialog()}>{t.signatures.close}</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
