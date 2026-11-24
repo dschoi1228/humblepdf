@@ -543,6 +543,31 @@ fn synthetic_signature(w: u32, h: u32) -> Vec<u8> {
     out
 }
 
+/// A synthetic photo of a signature on paper (M9, D44): grey-white paper with fine noise, a
+/// shadow that darkens toward the right edge, and the same stroke as `synthetic_signature` in
+/// dark blue ink blended into the paper. JPEG, so there is no transparency.
+fn signature_photo_jpeg(w: u32, h: u32) -> Vec<u8> {
+    let paper = |x: u32, y: u32| -> f64 {
+        let noise = f64::from((x * 7 + y * 13) % 9);
+        let shadow = (f64::from(x) / f64::from(w) - 0.7).max(0.0) / 0.3 * 35.0;
+        218.0 + noise - shadow
+    };
+    let ink = image::load_from_memory(&synthetic_signature(w, h))
+        .expect("signature")
+        .to_rgba8();
+    let img = image::RgbImage::from_fn(w, h, |x, y| {
+        let p = paper(x, y);
+        let a = f64::from(ink.get_pixel(x, y).0[3]) / 255.0;
+        let mix = |c: f64| (c * a + p * (1.0 - a)).round() as u8;
+        image::Rgb([mix(25.0), mix(32.0), mix(95.0)])
+    });
+    let mut out = Vec::new();
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut Cursor::new(&mut out), image::ImageFormat::Jpeg)
+        .expect("jpeg");
+    out
+}
+
 /// 300 pages (M1): a large page number on each, sizes cycling A4 / Letter / A5 landscape,
 /// every 7th page rotated 90.
 fn pages_300() -> Document {
@@ -623,6 +648,7 @@ fn main() {
         ("exif_rotate90.jpg", exif_rotated_jpeg()),
         ("alpha.png", alpha_png(400, 300)),
         ("signatures/sig-demo.png", synthetic_signature(600, 200)),
+        ("signatures/sig-white.jpg", signature_photo_jpeg(600, 200)),
     ] {
         if let Some(dir) = root.join(name).parent() {
             std::fs::create_dir_all(dir).expect("dir");

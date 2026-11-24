@@ -59,6 +59,18 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Normalize a signature image as the library stores it (PNG), optionally removing the
+    /// white background with a strength of 0..=100 (D44). Prints {"width", "height"}.
+    Signature {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=100))]
+        remove_white: Option<u8>,
+        /// Longest side in pixels (at most 2000).
+        #[arg(long, default_value_t = humblepdf_core::signature::MAX_SIDE)]
+        max_side: u32,
+    },
 }
 
 fn split_pairs(pairs: &[String]) -> Result<HashMap<String, String>, CoreError> {
@@ -88,6 +100,21 @@ fn run(command: Command) -> Result<(), CoreError> {
             let changed = rendered.is_some();
             std::fs::write(&out, rendered.unwrap_or(bytes))?;
             print_json(&serde_json::json!({ "changed": changed }));
+        }
+        Command::Signature {
+            file,
+            out,
+            remove_white,
+            max_side,
+        } => {
+            let bytes = std::fs::read(&file)?;
+            let options = humblepdf_core::signature::NormalizeOptions {
+                remove_white,
+                max_side,
+            };
+            let n = humblepdf_core::signature::normalize_with(&bytes, &options)?;
+            std::fs::write(&out, &n.png)?;
+            print_json(&serde_json::json!({ "width": n.width, "height": n.height }));
         }
         Command::Inspect { file, password } => {
             let info = humblepdf_core::source::inspect_path(&file, password.as_deref())?;

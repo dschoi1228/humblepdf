@@ -237,3 +237,118 @@ fn a_missing_signature_file_is_reported() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// ---- White background removal (SPEC 6.8, D44) ----
+
+use humblepdf_core::signature::{NormalizeOptions, normalize_with, remove_white};
+
+/// A synthetic photo of a signature: grey paper with noise, a shadow band on the right,
+/// a dark ink stroke in the middle and a soft (anti-aliased) edge next to it.
+fn photo() -> image::RgbaImage {
+    image::RgbaImage::from_fn(200, 100, |x, y| {
+        let noise = ((x * 7 + y * 13) % 9) as u8; // 0..8
+        let v = if (95..=105).contains(&x) && (20..80).contains(&y) {
+            40 // ink
+        } else if x == 106 && (20..80).contains(&y) {
+            130 // edge: half ink, half paper
+        } else if x >= 170 {
+            190 + noise // shadow
+        } else {
+            218 + noise // paper
+        };
+        image::Rgba([v, v, v, 255])
+    })
+}
+
+const PAPER: (u32, u32) = (20, 10);
+const INK: (u32, u32) = (100, 50);
+const EDGE: (u32, u32) = (106, 50);
+const SHADOW: (u32, u32) = (185, 50);
+
+fn alpha(img: &image::RgbaImage, (x, y): (u32, u32)) -> u8 {
+    img.get_pixel(x, y)[3]
+}
+
+#[test]
+fn white_removal_clears_paper_and_keeps_ink() {
+    let mut img = photo();
+    remove_white(&mut img, 50);
+    assert_eq!(alpha(&img, PAPER), 0, "paper");
+    assert_eq!(alpha(&img, INK), 255, "ink");
+    assert_eq!(img.get_pixel(INK.0, INK.1)[0], 40, "ink colour is kept");
+    let edge = img.get_pixel(EDGE.0, EDGE.1);
+    assert!(
+        edge[3] > 0 && edge[3] < 255,
+        "the edge is partly transparent: {edge:?}"
+    );
+    assert!(
+        edge[0] < 130,
+        "the paper's share is taken out of the edge colour: {edge:?}"
+    );
+    assert_eq!(img.dimensions(), (200, 100));
+}
+
+#[test]
+fn a_higher_strength_removes_darker_paper() {
+    let shadow_alpha = |s| {
+        let mut img = photo();
+        remove_white(&mut img, s);
+        alpha(&img, SHADOW)
+    };
+    let (low, mid, high) = (shadow_alpha(0), shadow_alpha(50), shadow_alpha(100));
+    assert!(
+        low > mid && mid >= high,
+        "shadow alpha {low} > {mid} >= {high}"
+    );
+    assert_eq!(high, 0, "the strongest setting clears the shadow");
+    assert!(low > 0, "the weakest setting keeps some of the shadow");
+    // Ink stays at every strength.
+    for s in [0, 50, 100] {
+        let mut img = photo();
+        remove_white(&mut img, s);
+        assert_eq!(alpha(&img, INK), 255, "ink at strength {s}");
+    }
+}
+
+#[test]
+fn white_removal_keeps_existing_transparency() {
+    let mut img = image::RgbaImage::from_fn(10, 10, |x, _| {
+        if x < 5 {
+            image::Rgba([0, 0, 0, 0])
+        } else {
+            image::Rgba([30, 30, 30, 255])
+        }
+    });
+    remove_white(&mut img, 50);
+    assert_eq!(img.get_pixel(0, 0)[3], 0);
+    assert_eq!(
+        img.get_pixel(9, 9)[3],
+        255,
+        "dark pixels of an image without paper stay"
+    );
+}
+
+#[test]
+fn normalize_with_removes_white_and_limits_the_preview_size() {
+    let mut jpeg = Vec::new();
+    image::DynamicImage::ImageRgb8(image::DynamicImage::ImageRgba8(photo()).to_rgb8())
+        .write_to(&mut Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+        .unwrap();
+    let plain = normalize_with(&jpeg, &NormalizeOptions::default()).unwrap();
+    let decoded = image::load_from_memory(&plain.png).unwrap().to_rgba8();
+    assert_eq!(
+        alpha(&decoded, PAPER),
+        255,
+        "without removal the paper stays"
+    );
+
+    let opts = NormalizeOptions {
+        remove_white: Some(50),
+        max_side: 100,
+    };
+    let preview = normalize_with(&jpeg, &opts).unwrap();
+    assert_eq!((preview.width, preview.height), (100, 50));
+    let decoded = image::load_from_memory(&preview.png).unwrap().to_rgba8();
+    assert_eq!(alpha(&decoded, (10, 5)), 0, "paper is transparent");
+    assert_eq!(alpha(&decoded, (50, 25)), 255, "ink is opaque");
+}
