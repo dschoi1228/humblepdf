@@ -65,6 +65,11 @@ export interface Backend {
   fontBytes(name: "main" | "jp"): Promise<Uint8Array>;
   /** Sets the window title (follows the UI language, D27). */
   setTitle(title: string): Promise<void>;
+  /**
+   * Files the app was started with (double-click on an associated file, "Open with"), D42.
+   * Handed out once. Browser mode: the `?open=` list.
+   */
+  startupFiles(): Promise<string[]>;
   /** M0 measurement hook (see src-tauri `bench_config`). */
   benchConfig(): Promise<string | null>;
   benchReport(report: string): Promise<void>;

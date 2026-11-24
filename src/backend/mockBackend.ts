@@ -218,6 +218,12 @@ export const mockBackend: Backend = {
     document.title = title;
   },
 
+  async startupFiles() {
+    // Browser-mode convenience: ?open=/__fixtures/a.pdf,/__fixtures/b.pdf
+    const open = new URLSearchParams(window.location.search).get("open");
+    return open ? open.split(",") : [];
+  },
+
   async benchConfig() {
     return new URLSearchParams(window.location.search).get("bench");
   },

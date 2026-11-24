@@ -3,8 +3,9 @@
 mod signatures;
 
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -240,6 +241,28 @@ fn bundled_font(name: String) -> Result<Response, ErrorPayload> {
         })
 }
 
+/// Files given on the command line: Windows runs `HumblePDF.exe <path>` when the user
+/// double-clicks a file the app is the default for, or uses "Open with" (D42).
+struct StartupFiles(Mutex<Vec<String>>);
+
+/// Existing files among the arguments (without the program name), as absolute paths.
+/// Relative paths are resolved against `cwd`; flags and missing paths are skipped.
+fn startup_files_from(args: impl IntoIterator<Item = OsString>, cwd: &Path) -> Vec<String> {
+    args.into_iter()
+        .map(PathBuf::from)
+        .filter(|p| !p.to_string_lossy().starts_with('-'))
+        .map(|p| if p.is_absolute() { p } else { cwd.join(p) })
+        .filter(|p| p.is_file())
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect()
+}
+
+/// The command-line files, handed out once: a reload of the page does not add them again.
+#[tauri::command]
+fn startup_files(state: State<'_, StartupFiles>) -> Vec<String> {
+    std::mem::take(&mut *state.0.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
 /// M0 measurement hook: when HUMBLEPDF_BENCH is set to a PDF path, the frontend opens it,
 /// reports the time to first page through `bench_report`, and the app exits.
 #[tauri::command]
@@ -267,6 +290,10 @@ pub fn run() {
         // Window position, size and maximized state are restored at start (D38).
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Sources::default())
+        .manage(StartupFiles(Mutex::new(startup_files_from(
+            std::env::args_os().skip(1),
+            &std::env::current_dir().unwrap_or_default(),
+        ))))
         .setup(|app| {
             // The window starts hidden so it appears once, already at its restored place;
             // the plugin shows it after restoring. Show it anyway if it is still hidden.
@@ -287,9 +314,40 @@ pub fn run() {
             signature_delete,
             signature_bytes,
             bundled_font,
+            startup_files,
             bench_config,
             bench_report
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn startup_files_keep_existing_files_only() {
+        let dir = std::env::temp_dir().join(format!("humblepdf-args-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("sub dir")).unwrap();
+        let a = dir.join("sub dir").join("문서 a.pdf");
+        std::fs::write(&a, b"%PDF-1.7").unwrap();
+        std::fs::write(dir.join("b.png"), b"x").unwrap();
+        let args = [
+            OsString::from(&a),                  // absolute, with a space and Hangul
+            OsString::from("b.png"),             // relative to the working directory
+            OsString::from("missing.pdf"),       // does not exist
+            OsString::from("--flag"),            // not a file
+            OsString::from(dir.join("sub dir")), // a folder
+        ];
+        let got = startup_files_from(args, &dir);
+        assert_eq!(
+            got,
+            vec![
+                a.to_string_lossy().into_owned(),
+                dir.join("b.png").to_string_lossy().into_owned()
+            ]
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

@@ -175,9 +175,9 @@ export default function App() {
           }
           return;
         }
-        // Browser-mode convenience: ?open=/__fixtures/a.pdf,/__fixtures/b.pdf
-        const open = new URLSearchParams(window.location.search).get("open");
-        if (open) await addFiles(open.split(",").map((path) => ({ path, name: baseName(path) })));
+        // Files the app was started with (D42): double-click, "Open with", or ?open= in browser mode.
+        const files = await backend.startupFiles();
+        if (files.length) await addFiles(files.map((path) => ({ path, name: baseName(path) })));
       })();
     }
 

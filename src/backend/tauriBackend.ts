@@ -41,6 +41,10 @@ export const tauriBackend: Backend = {
     return save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
   },
 
+  startupFiles() {
+    return invoke<string[]>("startup_files");
+  },
+
   exportDocument(model, outPath, passwords, flatten = false) {
     return invoke<ExportSummary>("export_document", { model, outPath, passwords, flatten });
   },
