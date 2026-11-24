@@ -267,6 +267,16 @@ pub fn run() {
         // Window position, size and maximized state are restored at start (D38).
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Sources::default())
+        .setup(|app| {
+            // The window starts hidden so it appears once, already at its restored place;
+            // the plugin shows it after restoring. Show it anyway if it is still hidden.
+            if let Some(window) = app.get_webview_window("main")
+                && !window.is_visible()?
+            {
+                window.show()?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             open_source,
             source_bytes,

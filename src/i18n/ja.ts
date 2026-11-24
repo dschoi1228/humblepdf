@@ -176,12 +176,12 @@ export const ja: Strings = {
   about: {
     title: "HumblePDF について",
     open: "情報",
-    tagline: "結合し、署名し、書き込む、ささやかな PDF ツール",
+    tagline: "結合・署名・書き込みができる、ささやかな PDF ツール",
     version: (v: string) => `バージョン ${v}`,
-    license: "MIT ライセンスで配布されるオープンソースソフトウェアです。",
-    offline: "インターネットには接続しません。ドキュメントと署名はこのコンピューターにのみ保存されます。",
-    credits: "PDF 表示: PDF.js (Apache-2.0) · フォント: Pretendard, Pretendard JP (SIL OFL 1.1)",
-    notices: "使用しているオープンソースのコンポーネントとライセンスは THIRD_PARTY_NOTICES.md に記載しています。",
+    license: "MIT ライセンスで公開しているオープンソースソフトウェアです。",
+    offline: "インターネットには一切接続しません。ドキュメントや署名がこの PC の外に送られることはありません。",
+    credits: "ページの表示には PDF.js (Apache-2.0)、フォントには Pretendard と Pretendard JP (SIL OFL 1.1) を使用しています。",
+    notices: "その他のオープンソースコンポーネントとライセンスは THIRD_PARTY_NOTICES.md に記載しています。",
     close: "閉じる",
   },
 
