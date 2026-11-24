@@ -16,6 +16,7 @@ use humblepdf_core::source::{self, SourceInfo};
 use serde::Serialize;
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_window_state::StateFlags;
 
 /// Sources opened in this session. Passwords live only here, in memory (SPEC 4).
 #[derive(Default)]
@@ -287,20 +288,29 @@ fn bench_report(report: String, app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        // Window position, size and maximized state are restored at start (D38).
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Window position, size and maximized state are restored at start (D38). The plugin
+        // does not show the window: the frontend shows it once the first screen is drawn
+        // (with the startup files, if any), so no empty window flashes first (D42).
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .build(),
+        )
         .manage(Sources::default())
         .manage(StartupFiles(Mutex::new(startup_files_from(
             std::env::args_os().skip(1),
             &std::env::current_dir().unwrap_or_default(),
         ))))
         .setup(|app| {
-            // The window starts hidden so it appears once, already at its restored place;
-            // the plugin shows it after restoring. Show it anyway if it is still hidden.
-            if let Some(window) = app.get_webview_window("main")
-                && !window.is_visible()?
-            {
-                window.show()?;
+            // The window starts hidden (tauri.conf.json) and the frontend shows it. If the
+            // frontend never gets that far, show the window anyway after a few seconds.
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    if !window.is_visible().unwrap_or(true) {
+                        let _ = window.show();
+                    }
+                });
             }
             Ok(())
         })

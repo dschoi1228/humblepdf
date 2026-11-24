@@ -70,6 +70,8 @@ export interface Backend {
    * Handed out once. Browser mode: the `?open=` list.
    */
   startupFiles(): Promise<string[]>;
+  /** Shows the window, which starts hidden so it appears with its first screen drawn (D42). */
+  showWindow(): Promise<void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */
   benchConfig(): Promise<string | null>;
   benchReport(report: string): Promise<void>;

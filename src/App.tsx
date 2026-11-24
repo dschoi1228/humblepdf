@@ -33,11 +33,38 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { isDirty, useDocumentStore } from "./state/documentStore";
 import { baseName } from "./state/model";
 import { useViewStore } from "./state/viewStore";
+import { usePasswordPrompt } from "./state/passwordPrompt";
 import { dictionary, errorMessage, strings, useLocaleStore } from "./i18n";
 import { toast } from "sonner";
 import "./viewer/testHooks";
 
 /** Resolves when the first page of the document has been drawn. */
+/** Longest wait before the window is shown while startup files are still opening. */
+const STARTUP_SHOW_WAIT_MS = 2000;
+
+function showWindow() {
+  backend.showWindow().catch((e) => console.error("cannot show the window", e));
+}
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Lets React commit the store change before the window appears (timers run while hidden). */
+const nextFrame = () => delay(50);
+
+/** Resolves when the password dialog opens. */
+function passwordAsked(): { promise: Promise<void>; cancel: () => void } {
+  let cancel = () => {};
+  const promise = new Promise<void>((resolve) => {
+    const unsubscribe = usePasswordPrompt.subscribe((s) => {
+      if (s.pending) {
+        unsubscribe();
+        resolve();
+      }
+    });
+    cancel = unsubscribe;
+  });
+  return { promise, cancel };
+}
+
 function waitForFirstRender(timeoutMs: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
@@ -163,6 +190,7 @@ export default function App() {
         // Measurement hook (HUMBLEPDF_BENCH / ?bench=): time to the first drawn page.
         const bench = await backend.benchConfig();
         if (bench) {
+          showWindow();
           const t0 = performance.now();
           try {
             const n = await addFiles([{ path: bench, name: baseName(bench) }]);
@@ -176,8 +204,19 @@ export default function App() {
           return;
         }
         // Files the app was started with (D42): double-click, "Open with", or ?open= in browser mode.
+        // The window is shown once they are in the document (or a password is asked, or after
+        // a short wait for a large file), so an empty window does not flash first.
         const files = await backend.startupFiles();
-        if (files.length) await addFiles(files.map((path) => ({ path, name: baseName(path) })));
+        if (!files.length) {
+          showWindow();
+          return;
+        }
+        const adding = addFiles(files.map((path) => ({ path, name: baseName(path) })));
+        const asked = passwordAsked();
+        await Promise.race([adding.then(nextFrame), asked.promise, delay(STARTUP_SHOW_WAIT_MS)]);
+        asked.cancel();
+        showWindow();
+        await adding;
       })();
     }
 

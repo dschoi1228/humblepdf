@@ -41,6 +41,12 @@ export const tauriBackend: Backend = {
     return save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
   },
 
+  async showWindow() {
+    const w = getCurrentWindow();
+    await w.show();
+    await w.setFocus();
+  },
+
   startupFiles() {
     return invoke<string[]>("startup_files");
   },
