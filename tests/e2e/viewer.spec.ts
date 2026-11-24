@@ -82,7 +82,13 @@ for (const c of CASES) {
     // pdf.js asset requests (cMaps for the non-embedded font) were served locally.
     expect(external, "requests outside the app").toEqual([]);
     expect(failed, "failed requests").toEqual([]);
-    expect(warnings.filter((w) => !w.includes("[vite]") && !w.includes("React DevTools"))).toEqual([]);
+    // pdf.js may ask Windows for a CJK system font (e.g. HYSMyeongJo-Medium -> Batang). Windows
+    // without the Korean supplemental fonts (the English CI runner) does not have it, and pdf.js
+    // falls back to another font; the text checks above still pass. That is not a missing app
+    // asset, so only this warning is ignored.
+    const ignored = (w: string) =>
+      w.includes("[vite]") || w.includes("React DevTools") || w.startsWith("Warning: Cannot load system font:");
+    expect(warnings.filter((w) => !ignored(w))).toEqual([]);
 
     mkdirSync("out/m0", { recursive: true });
     await page.locator("[data-testid=page]").first().screenshot({ path: `out/m0/${c.file}.png` });

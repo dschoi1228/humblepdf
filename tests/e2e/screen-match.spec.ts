@@ -86,6 +86,7 @@ test("renders out/m0_sample.pdf for review", async ({ page }) => {
     return out;
   });
   expect(images.length).toBe(2);
+  mkdirSync(join(repoRoot, "out", "m0"), { recursive: true });
   images.forEach((url, i) =>
     writeFileSync(join(repoRoot, "out", "m0", `m0_sample_p${i + 1}_pdfjs.png`), Buffer.from(url.split(",")[1], "base64")),
   );
