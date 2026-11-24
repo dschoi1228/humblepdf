@@ -254,7 +254,14 @@ test("saving over a source file is refused and asks again", async ({ page }) => 
 
 test("new document asks about unsaved changes", async ({ page }) => {
   await open(page, ["mixed_sizes.pdf"]);
-  // Unchanged since... adding files is a change: the document has never been saved.
+  // Files opened into an empty document are not a change (D42): reopening them is the same.
+  await page.keyboard.press("Control+n");
+  await expect(page.getByTestId("empty-state")).toBeVisible();
+  await expect(page.getByTestId("unsaved-dialog")).toHaveCount(0);
+
+  // An edit is a change: the document has never been saved.
+  await open(page, ["mixed_sizes.pdf"]);
+  await page.keyboard.press("Control+]");
   await page.keyboard.press("Control+n");
   await expect(page.getByTestId("unsaved-dialog")).toBeVisible();
   await page.getByTestId("unsaved-cancel").click();

@@ -37,8 +37,12 @@ type DocumentState = {
 
 const newId = () => crypto.randomUUID();
 
+/**
+ * True when closing would lose work (SPEC 6.1). A document without pages has nothing to
+ * save, so it is never dirty.
+ */
 export function isDirty(s: Pick<DocumentState, "doc" | "savedDoc">): boolean {
-  return s.doc !== s.savedDoc;
+  return s.doc !== s.savedDoc && s.doc.pages.length > 0;
 }
 
 function withHistory(s: DocumentState, history: History<Document>): Partial<DocumentState> {
@@ -67,7 +71,10 @@ export const useDocumentStore = create<DocumentState>((set) => ({
       const { doc, metas } = appendSources(s.doc, entries, newId, at);
       const sources = { ...s.sources };
       for (const m of metas) sources[m.id] = m;
-      return { ...withHistory(s, record(s.history, doc)), sources };
+      // Files opened into an empty, never-saved document are not a change: opening them again
+      // gives the same document (double-click on a PDF, then close). Adding to pages is.
+      const opening = s.doc.pages.length === 0 && s.savePath === null;
+      return { ...withHistory(s, record(s.history, doc)), sources, ...(opening ? { savedDoc: doc } : {}) };
     }),
   apply: (change) => set((s) => withHistory(s, record(s.history, change(s.doc)))),
   undo: () => set((s) => withHistory(s, undo(s.history))),

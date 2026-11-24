@@ -162,11 +162,33 @@ describe("document store", () => {
   beforeEach(() => useDocumentStore.getState().reset());
   const entries = [{ sourceId: "a", path: "a.pdf", name: "a.pdf", info: pdfInfo(3) }];
 
+  // Unsaved changes (SPEC 6.1, D42): opening files into an empty document is not a change.
+  it("files opened into an empty document are not a change; adding to pages and edits are", () => {
+    const st = useDocumentStore.getState;
+    expect(isDirty(st())).toBe(false);
+    st().addOpened(entries);
+    expect(st().doc.pages.length).toBe(3);
+    expect(isDirty(st())).toBe(false);
+    st().apply((d) => deletePages(d, new Set([d.pages[0].id])));
+    expect(isDirty(st())).toBe(true);
+    st().undo();
+    expect(isDirty(st())).toBe(false);
+    st().addOpened([{ ...entries[0], sourceId: "b", path: "b.pdf", name: "b.pdf" }]);
+    expect(isDirty(st())).toBe(true);
+  });
+
+  it("a document without pages is never dirty", () => {
+    const st = useDocumentStore.getState;
+    st().addOpened(entries);
+    st().undo();
+    expect(st().doc.pages.length).toBe(0);
+    expect(isDirty(st())).toBe(false);
+  });
+
   it("undo restores pages and prunes the selection; dirty follows the saved model", () => {
     const st = useDocumentStore.getState;
     st().addOpened(entries);
     const added = st().doc;
-    expect(isDirty(st())).toBe(true);
     st().markSaved(added, "out.pdf");
     expect(isDirty(st())).toBe(false);
 
