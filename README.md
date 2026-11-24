@@ -30,7 +30,8 @@ Delete those folders to remove everything the app has stored.
 
 ## Features
 
-- Add PDFs (including password-protected ones) and JPG/PNG images, merged into one document
+- Add PDFs (including password-protected ones) and JPG/PNG images, merged into one document.
+  You can also choose HumblePDF in **Open with** or make it the default app for PDFs
 - Continuous scrolling viewer with thumbnails and zoom from 25% to 400%
 - Reorder pages by dragging thumbnails, select multiple pages, delete and rotate them, and
   choose how image pages fit (A4 or image size)
