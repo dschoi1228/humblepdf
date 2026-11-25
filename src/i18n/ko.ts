@@ -18,6 +18,18 @@ export const ko = {
     language: "언어",
   },
 
+  find: {
+    open: "찾기",
+    label: "본문에서 찾기",
+    placeholder: "문서에서 찾기",
+    previous: "이전 결과",
+    next: "다음 결과",
+    close: "찾기 닫기",
+    count: (current: number, total: number) => `${current}/${total}`,
+    none: "결과 없음",
+    searching: "찾는 중…",
+  },
+
   empty: {
     title: "PDF나 이미지를 추가하세요",
     hint: "파일을 창에 끌어다 놓거나 아래 단추를 누르세요. PDF, JPG, PNG를 지원합니다.",
@@ -196,6 +208,9 @@ export const ko = {
       deletePages: "선택한 페이지 삭제 (객체를 선택하지 않았을 때)",
       tools: "선택, 텍스트, 하이라이트, 사각형, 타원, 직선, 화살표, 서명 도구",
       highlightText: "선택한 본문 텍스트를 하이라이트 (텍스트를 선택했을 때)",
+      find: "본문에서 찾기",
+      findNext: "다음 결과 (찾기 칸에서는 Enter)",
+      findPrevious: "이전 결과 (찾기 칸에서는 Shift+Enter)",
       textNewLine: "줄 바꾸기",
       textCommit: "확정",
       textCancel: "취소",

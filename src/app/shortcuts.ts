@@ -19,6 +19,9 @@ export type ShortcutAction =
   | "copy"
   | "paste"
   | "duplicate"
+  | "find"
+  | "findNext"
+  | "findPrevious"
   | { kind: "tool"; tool: Tool }
   /** Arrow keys: move the selected object by (dx, dy) pt in screen directions. */
   | { kind: "nudge"; dx: number; dy: number };
@@ -41,6 +44,7 @@ export function shortcutFor(e: KeyLike): ShortcutAction | null {
     if (e.code === "Delete" && !e.shiftKey) return "delete";
     if (e.code === "Escape") return "escape";
     if (e.code === "F1" && !e.shiftKey) return "help";
+    if (e.code === "F3") return e.shiftKey ? "findPrevious" : "findNext";
     const arrow = ARROWS[e.code];
     if (arrow) {
       const step = e.shiftKey ? NUDGE_LARGE : 1;
@@ -66,6 +70,8 @@ export function shortcutFor(e: KeyLike): ShortcutAction | null {
       return e.shiftKey ? "saveAs" : "save";
     case "KeyP":
       return e.shiftKey ? null : "print";
+    case "KeyF":
+      return e.shiftKey ? null : "find";
     case "KeyN":
       return e.shiftKey ? null : "newDocument";
     case "KeyO":

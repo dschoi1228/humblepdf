@@ -20,6 +20,18 @@ export const ja: Strings = {
     language: "言語",
   },
 
+  find: {
+    open: "検索",
+    label: "本文を検索",
+    placeholder: "文書内を検索",
+    previous: "前の結果",
+    next: "次の結果",
+    close: "検索を閉じる",
+    count: (current: number, total: number) => `${current}/${total}`,
+    none: "見つかりません",
+    searching: "検索中…",
+  },
+
   empty: {
     title: "PDF または画像を追加してください",
     hint: "ファイルをウィンドウにドラッグ＆ドロップするか、下のボタンを押してください。PDF、JPG、PNG に対応しています。",
@@ -198,6 +210,9 @@ export const ja: Strings = {
       deletePages: "選択したページを削除（オブジェクトを選択していないとき）",
       tools: "選択、テキスト、ハイライト、四角形、楕円、直線、矢印、署名ツール",
       highlightText: "選択した本文テキストをハイライト（テキストを選択しているとき）",
+      find: "本文を検索",
+      findNext: "次の結果（検索欄では Enter）",
+      findPrevious: "前の結果（検索欄では Shift+Enter）",
       textNewLine: "改行",
       textCommit: "確定",
       textCancel: "キャンセル",

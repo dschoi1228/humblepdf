@@ -2,6 +2,7 @@
 // once into an ImageBitmap (EXIF orientation applied by the browser).
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { backend } from "../backend";
+import type { TextItem } from "../search/match";
 import type { SourceMeta } from "../state/model";
 import { openPdf } from "./pdfjs";
 
@@ -28,9 +29,34 @@ export function loadSource(meta: SourceMeta): Promise<LoadedSource> {
   return p;
 }
 
+/** Text items of PDF pages for search (M14), by source id and page index; cleared with the sources. */
+const texts = new Map<string, Promise<TextItem[]>>();
+
+/**
+ * The text items of page `pageIndex` (0-based) of a PDF source, in the order the text layer
+ * makes its spans (only items with a string; marked content left out). Empty for images.
+ */
+export function loadPageText(meta: SourceMeta, pageIndex: number): Promise<TextItem[]> {
+  const key = `${meta.id}#${pageIndex}`;
+  let p = texts.get(key);
+  if (!p) {
+    p = (async () => {
+      const src = await loadSource(meta);
+      if (src.kind !== "pdf") return [];
+      const page = await src.doc.getPage(pageIndex + 1);
+      const content = await page.getTextContent({ disableNormalization: true });
+      return content.items.flatMap((it) => ("str" in it ? [{ str: it.str, hasEOL: it.hasEOL }] : []));
+    })();
+    p.catch(() => texts.delete(key));
+    texts.set(key, p);
+  }
+  return p;
+}
+
 export async function clearSources(): Promise<void> {
   const all = [...cache.values()];
   cache.clear();
+  texts.clear();
   for (const p of all) {
     try {
       const s = await p;

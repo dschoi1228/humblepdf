@@ -16,6 +16,7 @@ import {
   Info,
   Layers,
   Scan,
+  Search,
   Trash2,
   Undo2,
   ZoomIn,
@@ -26,6 +27,7 @@ import { pickAndAddFiles } from "../app/actions";
 import { deleteTargets, rotateTargets, setFitOfTargets } from "../app/pageActions";
 import { exportFlattened, newDocument, save, saveAs } from "../app/save";
 import { printDocument } from "../app/print";
+import { openFind } from "../app/findActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocumentStore } from "../state/documentStore";
@@ -186,6 +188,10 @@ export function Toolbar() {
       </IconButton>
       <IconButton label={t.toolbar.fitPage} disabled={empty} pressed={zoomMode === "fitPage"} onClick={() => view().setZoomMode("fitPage")} testId="fit-page">
         <Scan />
+      </IconButton>
+      <Divider />
+      <IconButton label={`${t.find.open} (Ctrl+F)`} disabled={empty} onClick={openFind} testId="open-find">
+        <Search />
       </IconButton>
       <div className="ml-auto flex items-center gap-3 pr-2">
         <PageNumberInput />

@@ -31,6 +31,9 @@ export type HelpAction =
   | "textCancel"
   | "textEdit"
   | "zoom"
+  | "find"
+  | "findNext"
+  | "findPrevious"
   | "help";
 
 type Probe = { code: string; ctrl?: boolean; shift?: boolean };
@@ -113,6 +116,9 @@ export const HELP: HelpEntry[] = [
   { group: "text", action: "textCancel", keys: ["Esc"] },
   { group: "text", action: "textEdit", keys: ["@doubleClick"] },
   { group: "view", action: "zoom", keys: ["@ctrlWheel"] },
+  { group: "view", action: "find", keys: ["Ctrl+F"], probes: [[{ code: "KeyF", ctrl: true }, "find"]] },
+  { group: "view", action: "findNext", keys: ["F3"], probes: [[{ code: "F3" }, "findNext"]] },
+  { group: "view", action: "findPrevious", keys: ["Shift+F3"], probes: [[{ code: "F3", shift: true }, "findPrevious"]] },
   { group: "view", action: "help", keys: ["F1"], probes: [[{ code: "F1" }, "help"]] },
 ];
 

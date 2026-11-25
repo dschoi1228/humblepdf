@@ -41,6 +41,9 @@ import { usePasswordPrompt } from "./state/passwordPrompt";
 import { dictionary, errorMessage, strings, useLocaleStore } from "./i18n";
 import { toast } from "sonner";
 import "./viewer/testHooks";
+import { FindBar } from "./components/FindBar";
+import { openFind } from "./app/findActions";
+import { useSearchStore } from "./search/searchStore";
 
 /** Resolves when the first page of the document has been drawn. */
 /** Longest wait before the window is shown while startup files are still opening. */
@@ -108,13 +111,29 @@ function runShortcut(action: ShortcutAction): boolean {
       return pasteObject();
     case "duplicate":
       return duplicateSelectedObject();
+    case "find":
+      if (!doc.doc.pages.length) return false;
+      openFind();
+      return true;
+    case "findNext":
+    case "findPrevious": {
+      if (!doc.doc.pages.length) return false;
+      const search = useSearchStore.getState();
+      if (!search.open) openFind();
+      else if (action === "findNext") search.next();
+      else search.prev();
+      return true;
+    }
     case "help":
       useInfoDialogs.setState({ help: true });
       return true;
     case "escape":
       if (editor.tool !== "select") editor.setTool("select");
       else if (editor.selected) editor.select(null);
-      else if (!clearTextSelection()) return false;
+      else if (clearTextSelection()) return true;
+      // Last: the find bar and its marks (M14).
+      else if (useSearchStore.getState().open) useSearchStore.getState().close();
+      else return false;
       return true;
     case "undo":
       doc.undo();
@@ -258,7 +277,10 @@ export default function App() {
         <EditBar />
         <main className="flex min-h-0 flex-1">
           {hasPages && thumbnailsOpen && <ThumbnailPanel />}
-          <div className="min-w-0 flex-1">{hasPages ? <PageView /> : <EmptyState />}</div>
+          <div className="relative min-w-0 flex-1">
+            {hasPages ? <PageView /> : <EmptyState />}
+            {hasPages && <FindBar />}
+          </div>
         </main>
       </div>
       <PasswordDialog />

@@ -33,6 +33,7 @@ export async function renderTextLayer(
   signal: AbortSignal,
 ): Promise<void> {
   div.replaceChildren();
+  itemSpans.delete(div);
   setTextLayerScale(div, scale);
   const layer = new TextLayer({
     textContentSource: pdfPage.streamTextContent({ includeMarkedContent: true, disableNormalization: true }),
@@ -46,6 +47,8 @@ export async function renderTextLayer(
   } finally {
     signal.removeEventListener("abort", onAbort);
   }
+  // One span per text item with a string, in the order of `getTextContent` (search, M14).
+  itemSpans.set(div, layer.textDivs);
   // A selection that runs into the next page starts it on a new line.
   div.append(document.createElement("br"));
 }
@@ -168,21 +171,62 @@ export function selectionQuads(): { pageIndex: number; quads: ClientQuad[] }[] {
       if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) part.setStart(range.startContainer, range.startOffset);
       if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) part.setEnd(range.endContainer, range.endOffset);
       if (part.collapsed) continue;
-      // Across the line: the span's box (one font size tall, placed by pdf.js from the font's
-      // ascent). The selection rectangles are as tall as the browser's fallback font, which
-      // for CJK text is much taller than the PDF glyphs. Along the line: the selected part.
-      const line = readingBox(rotation, span.getBoundingClientRect());
-      for (const r of part.getClientRects()) {
-        if (r.width < MIN_RUN_PX || r.height < MIN_RUN_PX) continue;
-        const run = readingBox(rotation, r);
-        if (run.x1 - run.x0 < MIN_RUN_PX) continue;
-        boxes.push({ x0: run.x0, x1: run.x1, y0: line.y0, y1: line.y1 });
-      }
+      boxes.push(...runBoxes(rotation, span, part));
     }
     const quads = mergeLines(boxes).map((b) => readingQuad(rotation, b));
     if (quads.length) out.push({ pageIndex: index, quads });
   }
   return out;
+}
+
+/**
+ * Reading-frame boxes of the part `part` of the text in `span`. Across the line: the span's
+ * box (one font size tall, placed by pdf.js from the font's ascent); the range rectangles
+ * are as tall as the browser's fallback font, which for CJK text is much taller than the
+ * PDF glyphs. Along the line: the part itself.
+ */
+function runBoxes(rotation: number, span: Element, part: Range): Box[] {
+  const line = readingBox(rotation, span.getBoundingClientRect());
+  const out: Box[] = [];
+  for (const r of part.getClientRects()) {
+    if (r.width < MIN_RUN_PX || r.height < MIN_RUN_PX) continue;
+    const run = readingBox(rotation, r);
+    if (run.x1 - run.x0 < MIN_RUN_PX) continue;
+    out.push({ x0: run.x0, x1: run.x1, y0: line.y0, y1: line.y1 });
+  }
+  return out;
+}
+
+// ---- Search results (M14, D49) ----
+
+/** Span of each pdf.js text item of a rendered layer, by item index. */
+const itemSpans = new WeakMap<HTMLElement, readonly HTMLElement[]>();
+
+/** A text range given by text item indices and offsets (see src/search/match.ts). */
+export type ItemRange = { start: { item: number; offset: number }; end: { item: number; offset: number } };
+
+/**
+ * Client quads (one per line) over the text items range `m` of a rendered layer. Empty when
+ * the layer is not rendered or lacks those items (pdf.js stops adding spans on huge pages).
+ */
+export function itemRangeQuads(layer: HTMLElement, m: ItemRange): ClientQuad[] {
+  const spans = itemSpans.get(layer);
+  if (!spans) return [];
+  const rotation = Number(layer.getAttribute("data-main-rotation") ?? 0);
+  const boxes: Box[] = [];
+  for (let i = m.start.item; i <= m.end.item; i++) {
+    const span = spans[i];
+    const text = span && textNodeOf(span);
+    if (!text) continue;
+    const from = i === m.start.item ? m.start.offset : 0;
+    const to = i === m.end.item ? m.end.offset : text.data.length;
+    if (to <= from || to > text.data.length) continue;
+    const part = document.createRange();
+    part.setStart(text, from);
+    part.setEnd(text, to);
+    boxes.push(...runBoxes(rotation, span, part));
+  }
+  return mergeLines(boxes).map((b) => readingQuad(rotation, b));
 }
 
 // ---- Dragging ----

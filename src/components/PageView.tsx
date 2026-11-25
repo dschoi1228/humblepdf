@@ -8,6 +8,7 @@ import { useViewStore } from "../state/viewStore";
 import { useStrings } from "../i18n";
 import { displayRotation, viewportTransform } from "../coords";
 import { ObjectLayer } from "./ObjectLayer";
+import { SearchLayer } from "./SearchLayer";
 import {
   computeLayout,
   currentPageAt,
@@ -51,6 +52,8 @@ const PageSlot = memo(function PageSlot(props: {
   const [failed, setFailed] = useState(false);
   /** The canvas has shown a bitmap once: the text layer waits for it (first paint first). */
   const [painted, setPainted] = useState(false);
+  /** Bumped each time the text layer is laid out anew (search boxes follow it). */
+  const [textVersion, setTextVersion] = useState(0);
   const key = `main:${page.id}`;
   const look = renderLook(page);
   // Object edits change `page` but not its pixels: the render effect reads the latest page
@@ -143,7 +146,9 @@ const PageSlot = memo(function PageSlot(props: {
       const pdfPage = await src.doc.getPage(pageRef.current.pageIndex + 1);
       if (ac.signal.aborted) return;
       await renderTextLayer(div, pdfPage, scaleRef.current, rotation, ac.signal);
-      if (!ac.signal.aborted) div.dataset.ready = "1";
+      if (ac.signal.aborted) return;
+      div.dataset.ready = "1";
+      setTextVersion((v) => v + 1);
     })().catch(() => {
       // No text layer: the page still shows; only selection is unavailable.
     });
@@ -163,6 +168,7 @@ const PageSlot = memo(function PageSlot(props: {
       data-testid="page"
     >
       <canvas ref={canvasRef} className="block size-full" />
+      {meta.info.kind === "pdf" && <SearchLayer pageId={page.id} textRef={textRef} textVersion={textVersion} scale={scale} />}
       {meta.info.kind === "pdf" && <div ref={textRef} className={TEXT_LAYER_CLASS} data-testid="text-layer" />}
       <ObjectLayer page={page} transform={transform} />
       {failed && (
@@ -216,7 +222,9 @@ export function PageView() {
     const s =
       zoomMode === "fitWidth"
         ? fitWidthScale({ w: Math.max(...sizes.map((z) => z.w)), h: 1 }, vp.width)
-        : fitPageScale(sizes[Math.min(view.currentPage, sizes.length - 1)], vp.width, vp.height);
+        : // Every page fits whole, like fit-width takes the widest page: in a document with
+          // upright and sideways pages none is cut off, and scrolling does not change the zoom.
+          Math.min(...sizes.map((z) => fitPageScale(z, vp.width, vp.height)));
     if (Math.abs(s - view.scale) > 1e-4) view.setFitScale(s);
   }, [zoomMode, sizes, vp.width, vp.height]);
 

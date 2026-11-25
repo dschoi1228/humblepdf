@@ -19,6 +19,18 @@ export const en: Strings = {
     language: "Language",
   },
 
+  find: {
+    open: "Find",
+    label: "Find in page text",
+    placeholder: "Find in document",
+    previous: "Previous match",
+    next: "Next match",
+    close: "Close find",
+    count: (current: number, total: number) => `${current}/${total}`,
+    none: "No matches",
+    searching: "Searching…",
+  },
+
   empty: {
     title: "Add a PDF or an image",
     hint: "Drag files onto the window or click the button below. PDF, JPG and PNG are supported.",
@@ -197,6 +209,9 @@ export const en: Strings = {
       deletePages: "Delete the selected pages (when no object is selected)",
       tools: "Select, text, highlight, rectangle, ellipse, line, arrow and signature tools",
       highlightText: "Highlight the selected page text (when text is selected)",
+      find: "Find in page text",
+      findNext: "Next match (Enter in the find field)",
+      findPrevious: "Previous match (Shift+Enter in the find field)",
       textNewLine: "New line",
       textCommit: "Commit",
       textCancel: "Cancel",

@@ -184,3 +184,14 @@
 .textLayer[data-main-rotation="270"] {
   transform: rotate(270deg) translateX(-100%);
 }
+
+/* Search matches (M14, D49): under the transparent text, multiplied with the page. */
+.search-hit {
+  position: absolute;
+  background: rgb(255 214 0 / 0.45);
+  border-radius: 1px;
+}
+.search-hit-current {
+  background: rgb(255 128 0 / 0.6);
+  outline: 1px solid rgb(230 100 0);
+}
