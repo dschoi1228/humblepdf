@@ -48,7 +48,7 @@ npm run build:exe            포터블 exe 빌드 → target/release/HumblePDF.e
 npm run build:installer      포터블 exe와 설치 파일 빌드 → target/release/bundle/nsis/HumblePDF_<버전>_x64-setup.exe
 cargo test --workspace       코어·CLI 테스트 (출력 PDF 재파싱 테스트 포함)
 npm test                     프런트엔드 단위 테스트 (Vitest. 좌표 변환, core 상자 vs pdf.js)
-npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용). 준비 단계가 CLI를 빌드해 쓴다
+npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용). 준비 단계가 CLI를 빌드해 쓴다. 앱으로 만든 사람 확인용 샘플 out/m13_sample.pdf도 쓴다
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 npm run lint                 ESLint + tsc 타입 검사

@@ -51,7 +51,8 @@ Delete those folders to remove everything the app has stored.
   choose how image pages fit (A4 or image size)
 - Export only the selected pages to a new PDF
 - Highlights, rectangles, ellipses, lines and arrows, saved as standard PDF annotations that
-  other viewers can move or delete
+  other viewers can move or delete. Drag the highlighter over page text to mark just that
+  text, line by line, or select text and press **H**
 - Text in Korean, English and Japanese, saved as FreeText annotations with embedded font
   subsets
 - A signature library (PNG/JPG) and signature placement; signatures are baked into the page.
