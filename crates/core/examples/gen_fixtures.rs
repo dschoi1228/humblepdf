@@ -10,7 +10,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use humblepdf_core::font::{FontSubsetBuilder, hex_string};
+use humblepdf_core::font::{FontSubsetBuilder, JP_FONT, JP_FONT_NAME, hex_string};
 use image::{ImageBuffer, Rgb, Rgba};
 use lopdf::encryption::crypt_filters::{Aes256CryptFilter, CryptFilter};
 use lopdf::{
@@ -395,6 +395,45 @@ fn korean_nonembedded() -> Document {
     finish(doc, pages_id, vec![page])
 }
 
+/// Lines of the text selection fixture (M12): Latin (Helvetica), Korean and Japanese
+/// (bundled fonts with ToUnicode). Tests copy them back from the text layer.
+pub const SELECT_TEXT: [&str; 3] = [
+    "Select me: HumblePDF 0.3",
+    "한글 본문을 복사합니다",
+    "日本語のテキストです",
+];
+
+/// Two pages with the same three lines; the second page has /Rotate 90.
+fn text_select() -> Document {
+    let mut doc = Document::with_version("1.7");
+    let pages_id = doc.new_object_id();
+    let mut ko = FontSubsetBuilder::bundled().expect("font");
+    let mut jp = FontSubsetBuilder::new(JP_FONT, JP_FONT_NAME).expect("jp font");
+    let hex = |codes: &[u8]| codes.iter().map(|b| format!("{b:02X}")).collect::<String>();
+    let content = format!(
+        "BT /F1 24 Tf 60 760 Td ({}) Tj ET
+         BT /K1 24 Tf 60 710 Td <{}> Tj ET
+         BT /J1 24 Tf 60 660 Td <{}> Tj ET
+",
+        SELECT_TEXT[0],
+        hex(&ko.encode(SELECT_TEXT[1]).codes),
+        hex(&jp.encode(SELECT_TEXT[2]).codes),
+    );
+    let ko_id = ko.write(&mut doc).expect("write font");
+    let jp_id = jp.write(&mut doc).expect("write jp font");
+    let helv = doc.add_object(helvetica());
+    let c = doc.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
+    let mut kids = Vec::new();
+    for rotate in [0, 90] {
+        kids.push(doc.add_object(dictionary! {
+            "Type" => "Page", "Parent" => pages_id, "MediaBox" => rect(A4), "Rotate" => rotate,
+            "Resources" => dictionary! { "Font" => dictionary! { "F1" => helv, "K1" => ko_id, "J1" => jp_id } },
+            "Contents" => c,
+        }));
+    }
+    finish(doc, pages_id, kids)
+}
+
 /// ~50MB: four pages, each with an incompressible 2048x2048 RGB noise image.
 fn large() -> Document {
     let mut doc = Document::with_version("1.7");
@@ -621,6 +660,7 @@ fn main() {
     save(shared_resources(), &root.join("shared_resources.pdf"), true);
     save(content_array(), &root.join("content_array.pdf"), true);
     save(korean_embedded(), &root.join("korean_embedded.pdf"), true);
+    save(text_select(), &root.join("text_select.pdf"), true);
     save(
         korean_nonembedded(),
         &root.join("korean_nonembedded.pdf"),
