@@ -1,4 +1,5 @@
 // App shell: toolbar, thumbnail panel, page view, password dialog and error toasts.
+import { printDocument } from "./app/print";
 import { useEffect, useRef } from "react";
 import { addFiles, pickAndAddFiles } from "./app/actions";
 import { deleteTargets, rotateTargets } from "./app/pageActions";
@@ -117,6 +118,9 @@ function runShortcut(action: ShortcutAction): boolean {
     case "selectAll":
       doc.selectAll();
       return true;
+    case "print":
+      void printDocument();
+      return true;
     case "save":
       void save();
       return true;
@@ -171,6 +175,8 @@ export default function App() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const action = shortcutFor(e);
+      // Ctrl+P never prints the app's own screen (the WebView's default), even in a field.
+      if (action === "print") e.preventDefault();
       if (!action || shortcutsBlocked(e.target)) return;
       if (runShortcut(action)) e.preventDefault();
     };

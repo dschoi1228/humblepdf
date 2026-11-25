@@ -2,6 +2,7 @@ import {
   File,
   FilePlus2,
   Image,
+  Printer,
   Languages,
   MoveHorizontal,
   PanelLeft,
@@ -24,6 +25,7 @@ import { useState } from "react";
 import { pickAndAddFiles } from "../app/actions";
 import { deleteTargets, rotateTargets, setFitOfTargets } from "../app/pageActions";
 import { exportFlattened, newDocument, save, saveAs } from "../app/save";
+import { printDocument } from "../app/print";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocumentStore } from "../state/documentStore";
@@ -134,6 +136,9 @@ export function Toolbar() {
       </IconButton>
       <IconButton label={t.save.flatten} disabled={empty} onClick={() => void exportFlattened()} testId="export-flattened">
         <Layers />
+      </IconButton>
+      <IconButton label={`${t.print.print} (Ctrl+P)`} disabled={empty} onClick={() => void printDocument()} testId="print">
+        <Printer />
       </IconButton>
       <Divider />
       <IconButton label={`${t.history.undo} (Ctrl+Z)`} disabled={!canUndo} onClick={() => useDocumentStore.getState().undo()} testId="undo">

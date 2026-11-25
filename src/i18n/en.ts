@@ -38,6 +38,7 @@ export const en: Strings = {
     fitA4: "Fit to A4",
     fitImage: "Image size",
     exportPages: (n: number) => `Export ${n} page${n === 1 ? "" : "s"}…`,
+    printPages: (n: number) => `Print ${n} page${n === 1 ? "" : "s"}…`,
   },
 
   password: {
@@ -52,6 +53,13 @@ export const en: Strings = {
   history: {
     undo: "Undo",
     redo: "Redo",
+  },
+
+  print: {
+    print: "Print",
+    preparing: "Preparing the PDF to print…",
+    failed: "Could not print.",
+    imageFallback: "The PDF viewer is not available on this PC, so the pages are printed as images. Text may be slightly less sharp.",
   },
 
   save: {
@@ -165,6 +173,7 @@ export const en: Strings = {
       newDocument: "New document",
       save: "Save",
       saveAs: "Save as",
+      print: "Print",
       undo: "Undo",
       redo: "Redo",
       copy: "Copy object",

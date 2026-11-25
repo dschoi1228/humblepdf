@@ -55,6 +55,10 @@ export const tauriBackend: Backend = {
     return invoke<ExportSummary>("export_document", { model, outPath, passwords, flatten });
   },
 
+  async printBytes(model, passwords) {
+    return new Uint8Array(await invoke<ArrayBuffer>("print_document", { model, passwords }));
+  },
+
   async onCloseRequested(guard) {
     // Tauri destroys the window after the handler unless preventDefault() was called.
     return getCurrentWindow().onCloseRequested(async (event) => {

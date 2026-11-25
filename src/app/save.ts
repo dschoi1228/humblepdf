@@ -25,12 +25,10 @@ type ExportResult = "ok" | "is_source" | "failed";
  */
 type ExportKind = "save" | "flatten" | "pages";
 
-/** Writes the document, or `part` of it for "pages", to `path`. */
-async function exportTo(path: string, kind: ExportKind = "save", part?: Document): Promise<ExportResult> {
+/** The model core exports for `doc`, with the passwords of its encrypted sources. */
+export function exportInputs(doc: Document): { model: Document; passwords: Record<string, string>; encrypted: boolean } {
   const st = useDocumentStore.getState();
-  const doc = st.doc;
-  const flatten = kind === "flatten";
-  const model = exportModel(part ?? doc);
+  const model = exportModel(doc);
   const passwords: Record<string, string> = {};
   let encrypted = false;
   for (const s of model.sources) {
@@ -38,6 +36,14 @@ async function exportTo(path: string, kind: ExportKind = "save", part?: Document
     if (meta?.password !== undefined) passwords[s.id] = meta.password;
     if (meta?.info.encrypted) encrypted = true;
   }
+  return { model, passwords, encrypted };
+}
+
+/** Writes the document, or `part` of it for "pages", to `path`. */
+async function exportTo(path: string, kind: ExportKind = "save", part?: Document): Promise<ExportResult> {
+  const doc = useDocumentStore.getState().doc;
+  const flatten = kind === "flatten";
+  const { model, passwords, encrypted } = exportInputs(part ?? doc);
   useSaveStatus.setState({ saving: true });
   try {
     const summary = await backend.exportDocument(model, path, passwords, flatten);

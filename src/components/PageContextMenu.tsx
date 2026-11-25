@@ -1,7 +1,8 @@
-// Right-click menu of the thumbnail panel (SPEC 6.3): rotate, delete, export, image fit. Acts on
+// Right-click menu of the thumbnail panel (SPEC 6.3): rotate, delete, export, print, image fit. Acts on
 // the selected pages (the panel selects the clicked page first if it was not selected).
-import { FileOutput, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { FileOutput, Printer, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { exportPages } from "../app/save";
+import { printPages } from "../app/print";
 import { useState, type ReactNode } from "react";
 import type { ImageFit } from "../bindings/ImageFit";
 import { deleteTargets, imageTargets, rotateTargets, setFitOfTargets, targetPageIds } from "../app/pageActions";
@@ -51,6 +52,10 @@ export function PageContextMenu(props: { children: ReactNode }) {
         <ContextMenuItem onSelect={() => void exportPages()} data-testid="export-pages">
           <FileOutput />
           {t.pages.exportPages(pageCount)}
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => void printPages()} data-testid="print-pages">
+          <Printer />
+          {t.pages.printPages(pageCount)}
         </ContextMenuItem>
         {images.count > 0 && (
           <>

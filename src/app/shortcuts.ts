@@ -9,6 +9,7 @@ export type ShortcutAction =
   | "selectAll"
   | "save"
   | "saveAs"
+  | "print"
   | "newDocument"
   | "addFiles"
   | "rotateLeft"
@@ -63,6 +64,8 @@ export function shortcutFor(e: KeyLike): ShortcutAction | null {
       return e.shiftKey ? null : "duplicate";
     case "KeyS":
       return e.shiftKey ? "saveAs" : "save";
+    case "KeyP":
+      return e.shiftKey ? null : "print";
     case "KeyN":
       return e.shiftKey ? null : "newDocument";
     case "KeyO":

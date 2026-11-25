@@ -46,6 +46,8 @@ Delete those folders to remove everything the app has stored.
 - Copy, paste and duplicate objects; undo and redo for everything
 - Reopen a file saved by HumblePDF: its highlights, shapes and text come back editable
 - Export a flattened copy with every object baked into the pages
+- Print the document or the selected pages (**Ctrl+P**) through the built-in Edge PDF
+  viewer, so text prints sharp
 - Press **F1** in the app for all keyboard shortcuts
 
 ## Tech stack

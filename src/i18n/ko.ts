@@ -37,6 +37,7 @@ export const ko = {
     fitA4: "A4에 맞춤",
     fitImage: "이미지 크기",
     exportPages: (n: number) => `${n}쪽 내보내기…`,
+    printPages: (n: number) => `${n}쪽 인쇄…`,
   },
 
   password: {
@@ -51,6 +52,13 @@ export const ko = {
   history: {
     undo: "실행 취소",
     redo: "다시 실행",
+  },
+
+  print: {
+    print: "인쇄",
+    preparing: "인쇄할 PDF를 만들고 있습니다…",
+    failed: "인쇄하지 못했습니다.",
+    imageFallback: "이 PC에서는 PDF 뷰어를 쓸 수 없어 쪽을 이미지로 인쇄합니다. 글자가 조금 덜 선명할 수 있습니다.",
   },
 
   save: {
@@ -164,6 +172,7 @@ export const ko = {
       newDocument: "새 문서",
       save: "저장",
       saveAs: "다른 이름으로 저장",
+      print: "인쇄",
       undo: "실행 취소",
       redo: "다시 실행",
       copy: "객체 복사",

@@ -193,6 +193,15 @@ export const mockBackend: Backend = {
     return body as ExportSummary;
   },
 
+  async printBytes(model, passwords) {
+    // Browser mode: the core writes a flattened export under out/ and the page reads it back.
+    const path = `/__out/e2e/print/print-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
+    await this.exportDocument(model, path, passwords, true);
+    const res = await fetch(path);
+    if (!res.ok) throw { code: "internal", message: `cannot read ${path}` } satisfies BackendError;
+    return new Uint8Array(await res.arrayBuffer());
+  },
+
   async onCloseRequested(guard) {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (guard.isDirty()) e.preventDefault();

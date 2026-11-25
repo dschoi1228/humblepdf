@@ -39,6 +39,7 @@ export const ja: Strings = {
     fitA4: "A4 に合わせる",
     fitImage: "画像のサイズ",
     exportPages: (n: number) => `${n}ページをエクスポート…`,
+    printPages: (n: number) => `${n}ページを印刷…`,
   },
 
   password: {
@@ -53,6 +54,13 @@ export const ja: Strings = {
   history: {
     undo: "元に戻す",
     redo: "やり直し",
+  },
+
+  print: {
+    print: "印刷",
+    preparing: "印刷するPDFを作成しています…",
+    failed: "印刷できませんでした。",
+    imageFallback: "このPCではPDFビューアーを使えないため、ページを画像として印刷します。文字が少しぼやける場合があります。",
   },
 
   save: {
@@ -166,6 +174,7 @@ export const ja: Strings = {
       newDocument: "新規ドキュメント",
       save: "保存",
       saveAs: "名前を付けて保存",
+      print: "印刷",
       undo: "元に戻す",
       redo: "やり直し",
       copy: "オブジェクトをコピー",

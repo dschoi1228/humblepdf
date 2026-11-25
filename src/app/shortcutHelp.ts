@@ -11,6 +11,7 @@ export type HelpAction =
   | "newDocument"
   | "save"
   | "saveAs"
+  | "print"
   | "undo"
   | "redo"
   | "copy"
@@ -49,6 +50,7 @@ export const HELP: HelpEntry[] = [
   { group: "file", action: "newDocument", keys: ["Ctrl+N"], probes: [[{ code: "KeyN", ctrl: true }, "newDocument"]] },
   { group: "file", action: "save", keys: ["Ctrl+S"], probes: [[{ code: "KeyS", ctrl: true }, "save"]] },
   { group: "file", action: "saveAs", keys: ["Ctrl+Shift+S"], probes: [[{ code: "KeyS", ctrl: true, shift: true }, "saveAs"]] },
+  { group: "file", action: "print", keys: ["Ctrl+P"], probes: [[{ code: "KeyP", ctrl: true }, "print"]] },
   { group: "edit", action: "undo", keys: ["Ctrl+Z"], probes: [[{ code: "KeyZ", ctrl: true }, "undo"]] },
   {
     group: "edit",

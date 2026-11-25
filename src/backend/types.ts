@@ -46,6 +46,8 @@ export interface Backend {
    * and stay in memory. Rejects with `output_is_source` for a source path.
    */
   exportDocument(model: Document, outPath: string, passwords: Record<string, string>, flatten?: boolean): Promise<ExportSummary>;
+  /** The document as a flattened PDF in memory, for printing (D45). Nothing is written. */
+  printBytes(model: Document, passwords: Record<string, string>): Promise<Uint8Array>;
   /**
    * Guards closing the window: when `isDirty()` is true the close waits for `confirm()` and
    * is cancelled when it resolves false. Returns an unsubscribe function.

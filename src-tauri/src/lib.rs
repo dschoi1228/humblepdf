@@ -162,6 +162,31 @@ async fn export_document(
         })?
 }
 
+/// Builds the document for printing (D45): the same PDF as a flattened export, kept in
+/// memory and handed to the WebView's PDF viewer. Nothing is written to disk.
+#[tauri::command]
+async fn print_document(
+    model: Document,
+    passwords: HashMap<String, String>,
+    app: AppHandle,
+) -> Result<Response, ErrorPayload> {
+    let signature_dir = signature_dir(&app)?;
+    let job = move || {
+        let ctx = ExportContext {
+            passwords,
+            signature_dir: Some(signature_dir),
+            options: export::ExportOptions { flatten: true },
+        };
+        guarded(|| export::export_to_bytes(&model, &ctx)).map(|(bytes, _)| Response::new(bytes))
+    };
+    tauri::async_runtime::spawn_blocking(job)
+        .await
+        .map_err(|_| ErrorPayload {
+            code: "internal",
+            message: "print task failed".into(),
+        })?
+}
+
 /// The signature library folder: %APPDATA%<identifier>signatures (D30).
 fn signature_dir(app: &AppHandle) -> Result<PathBuf, ErrorPayload> {
     app.path()
@@ -341,6 +366,7 @@ pub fn run() {
             open_source,
             source_bytes,
             export_document,
+            print_document,
             signature_list,
             signature_add,
             signature_add_png,
