@@ -162,7 +162,7 @@ describe("document store", () => {
   beforeEach(() => useDocumentStore.getState().reset());
   const entries = [{ sourceId: "a", path: "a.pdf", name: "a.pdf", info: pdfInfo(3) }];
 
-  // Unsaved changes (SPEC 6.1, D42): opening files into an empty document is not a change.
+  // Unsaved changes (SPEC 6.1, D42): opening one file into an empty document is not a change.
   it("files opened into an empty document are not a change; adding to pages and edits are", () => {
     const st = useDocumentStore.getState;
     expect(isDirty(st())).toBe(false);
@@ -174,6 +174,13 @@ describe("document store", () => {
     st().undo();
     expect(isDirty(st())).toBe(false);
     st().addOpened([{ ...entries[0], sourceId: "b", path: "b.pdf", name: "b.pdf" }]);
+    expect(isDirty(st())).toBe(true);
+  });
+
+  it("several files opened at once are a merge, so a change", () => {
+    const st = useDocumentStore.getState;
+    st().addOpened([entries[0], { ...entries[0], sourceId: "b", path: "b.pdf", name: "b.pdf" }]);
+    expect(st().doc.pages.length).toBe(6);
     expect(isDirty(st())).toBe(true);
   });
 

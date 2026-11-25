@@ -71,9 +71,10 @@ export const useDocumentStore = create<DocumentState>((set) => ({
       const { doc, metas } = appendSources(s.doc, entries, newId, at);
       const sources = { ...s.sources };
       for (const m of metas) sources[m.id] = m;
-      // Files opened into an empty, never-saved document are not a change: opening them again
-      // gives the same document (double-click on a PDF, then close). Adding to pages is.
-      const opening = s.doc.pages.length === 0 && s.savePath === null;
+      // One file opened into an empty, never-saved document is not a change: opening it again
+      // gives the same document (double-click on a PDF, then close). Several files at once are
+      // a merge, and adding to pages is a change too (D42).
+      const opening = s.doc.pages.length === 0 && s.savePath === null && entries.length === 1;
       return { ...withHistory(s, record(s.history, doc)), sources, ...(opening ? { savedDoc: doc } : {}) };
     }),
   apply: (change) => set((s) => withHistory(s, record(s.history, change(s.doc)))),

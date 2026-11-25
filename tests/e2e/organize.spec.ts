@@ -277,3 +277,16 @@ test("new document asks about unsaved changes", async ({ page }) => {
   await page.keyboard.press("Control+n");
   await expect(page.getByTestId("unsaved-dialog")).toHaveCount(0);
 });
+
+// D42: one file opened into an empty window is not a change (double-click, then close);
+// several files at once are a merge, so closing asks to save.
+test("one opened file is not a change; several opened at once are", async ({ page }) => {
+  await page.goto(`/?open=${fixtureUrl("rotated.pdf")}`);
+  await waitForRenders(page);
+  expect(await page.evaluate(() => window.__viewer!.dirty())).toBe(false);
+
+  await page.goto(`/?open=${["mixed_sizes.pdf", "rotated.pdf"].map(fixtureUrl).join(",")}`);
+  await waitForRenders(page);
+  expect(await page.evaluate(() => window.__viewer!.model().pages.length)).toBeGreaterThan(4);
+  expect(await page.evaluate(() => window.__viewer!.dirty())).toBe(true);
+});
