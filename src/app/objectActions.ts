@@ -1,9 +1,11 @@
 // Object commands used by the edit bar, the object layer and keyboard shortcuts (SPEC 6.4).
 import type { PageObject } from "../bindings/PageObject";
+import type { Point } from "../bindings/Point";
 import type { Rect } from "../bindings/Rect";
-import { displayRotation, deltaToUser, viewportTransform } from "../coords";
+import { displayRotation, deltaToUser, toUser, viewportTransform } from "../coords";
 import { useEditorStore } from "../editor/editorStore";
-import { keepInside, moveObject } from "../editor/geometry";
+import { highlightFromQuads, keepInside, moveObject } from "../editor/geometry";
+import { clearTextSelection, selectionQuads } from "../viewer/textLayer";
 import { STICKY_TOOLS, toolOf, withProps, type DrawTool, type PropsPatch, type ToolProps } from "../editor/tools";
 import { useDocumentStore } from "../state/documentStore";
 import { addObject, deleteObject, findObject, updateObject } from "../state/objects";
@@ -103,6 +105,35 @@ export function pasteObject(): boolean {
   editor.setClipboard({ ...clip, pastes: target.id === clip.copied.pageId ? pastes : clip.pastes });
   if (editor.tool !== "select") editor.setTool("select");
   editor.select({ pageId: target.id, objectId: object.id });
+  return true;
+}
+
+/**
+ * Highlights the selected page text (M13, D48): one highlight per page with one quad per
+ * line, all in one Undo step, in the current highlight colour and opacity. The text
+ * selection is cleared. With `selectResult` the first new highlight is selected. False
+ * when no page text is selected.
+ */
+export function highlightTextSelection(selectResult: boolean): boolean {
+  const groups = selectionQuads();
+  clearTextSelection();
+  const { doc } = useDocumentStore.getState();
+  const scale = useViewStore.getState().scale;
+  const props = useEditorStore.getState().props.highlight;
+  const made: { pageId: string; object: PageObject }[] = [];
+  for (const g of groups) {
+    const page = doc.pages[g.pageIndex];
+    const el = document.querySelector(`[data-testid=page][data-page-index="${g.pageIndex}"]`);
+    if (!page || !el) continue;
+    const r = el.getBoundingClientRect();
+    const t = viewportTransform(page.box, displayRotation(page.baseRotation, page.userRotation), scale);
+    const quads = g.quads.map((q) => q.map((p) => toUser(t, { x: p.x - r.left, y: p.y - r.top })) as [Point, Point, Point, Point]);
+    const object = highlightFromQuads(crypto.randomUUID(), quads, props, page.box);
+    if (object) made.push({ pageId: page.id, object });
+  }
+  if (!made.length) return false;
+  useDocumentStore.getState().apply((d) => made.reduce((acc, m) => addObject(acc, m.pageId, m.object), d));
+  if (selectResult) useEditorStore.getState().select({ pageId: made[0].pageId, objectId: made[0].object.id });
   return true;
 }
 

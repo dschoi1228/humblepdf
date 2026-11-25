@@ -9,6 +9,7 @@ import {
   copySelectedObject,
   deleteSelectedObject,
   duplicateSelectedObject,
+  highlightTextSelection,
   nudgeSelectedObject,
   pasteObject,
 } from "./app/objectActions";
@@ -87,6 +88,8 @@ function runShortcut(action: ShortcutAction): boolean {
   if (typeof action === "object") {
     if (action.kind === "tool") {
       if (!doc.doc.pages.length) return false;
+      // H with page text selected highlights that text (M13, D48).
+      if (action.tool === "highlight" && hasTextSelection() && highlightTextSelection(true)) return true;
       chooseTool(action.tool);
       return true;
     }

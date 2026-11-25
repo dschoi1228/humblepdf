@@ -121,6 +121,7 @@ export const en: Strings = {
     opacity: "Opacity",
     deleteObject: "Delete object",
     hint: "Click an object to select it. To add one, pick a tool on the left.",
+    highlightTip: "drag over text to mark the text, elsewhere to mark an area",
     colors: {
       black: "Black",
       red: "Red",
@@ -195,6 +196,7 @@ export const en: Strings = {
       rotate: "Rotate pages left or right",
       deletePages: "Delete the selected pages (when no object is selected)",
       tools: "Select, text, highlight, rectangle, ellipse, line, arrow and signature tools",
+      highlightText: "Highlight the selected page text (when text is selected)",
       textNewLine: "New line",
       textCommit: "Commit",
       textCancel: "Cancel",

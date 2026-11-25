@@ -260,7 +260,7 @@ export function EditBar() {
       {TOOLS.map((tl) => (
         <IconButton
           key={tl}
-          label={`${t.editor.tools[tl]} (${TOOL_KEYS[tl].slice(3)})`}
+          label={`${t.editor.tools[tl]} (${TOOL_KEYS[tl].slice(3)})${tl === "highlight" ? `: ${t.editor.highlightTip}` : ""}`}
           pressed={tool === tl}
           disabled={empty}
           onClick={() => chooseTool(tl)}

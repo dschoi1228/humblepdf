@@ -120,6 +120,7 @@ export const ko = {
     opacity: "불투명도",
     deleteObject: "객체 삭제",
     hint: "객체를 클릭해 선택하세요. 새로 만들려면 왼쪽에서 도구를 고르세요.",
+    highlightTip: "글자 위를 끌면 글자에, 빈 곳을 끌면 영역에 칠합니다",
     colors: {
       black: "검정",
       red: "빨강",
@@ -194,6 +195,7 @@ export const ko = {
       rotate: "페이지 왼쪽·오른쪽으로 회전",
       deletePages: "선택한 페이지 삭제 (객체를 선택하지 않았을 때)",
       tools: "선택, 텍스트, 하이라이트, 사각형, 타원, 직선, 화살표, 서명 도구",
+      highlightText: "선택한 본문 텍스트를 하이라이트 (텍스트를 선택했을 때)",
       textNewLine: "줄 바꾸기",
       textCommit: "확정",
       textCancel: "취소",

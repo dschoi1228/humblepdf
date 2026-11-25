@@ -25,6 +25,7 @@ export type HelpAction =
   | "rotate"
   | "deletePages"
   | "tools"
+  | "highlightText"
   | "textNewLine"
   | "textCommit"
   | "textCancel"
@@ -104,6 +105,8 @@ export const HELP: HelpEntry[] = [
       [{ code: "KeyS" }, tool("signature")],
     ],
   },
+  // With page text selected, H highlights it instead of choosing the tool (M13).
+  { group: "tools", action: "highlightText", keys: ["H"] },
   // Inside the text box: handled by the text editor, not the global key map.
   { group: "text", action: "textNewLine", keys: ["Enter"] },
   { group: "text", action: "textCommit", keys: ["Ctrl+Enter"] },

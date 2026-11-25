@@ -12,6 +12,7 @@ import {
   objectBounds,
   parseHandle,
   handleKey,
+  highlightFromQuads,
   resizeObject,
   snap45,
 } from "./geometry";
@@ -196,5 +197,28 @@ describe("screen directions on rotated pages", () => {
     const a = screenAxes(t);
     expect(d.x).toBeCloseTo(a.right.x, 9);
     expect(d.y).toBeCloseTo(a.right.y, 9);
+  });
+});
+
+describe("highlightFromQuads (M13)", () => {
+  const props = DEFAULT_PROPS.highlight;
+  const q = (x0: number, y0: number, x1: number, y1: number) =>
+    [
+      { x: x0, y: y1 },
+      { x: x1, y: y1 },
+      { x: x0, y: y0 },
+      { x: x1, y: y0 },
+    ] as const;
+
+  it("keeps the quads and their point order, with the tool's colour", () => {
+    const h = highlightFromQuads("h", [q(60, 755, 300, 779), q(60, 705, 280, 729)], props, box);
+    expect(h).toEqual({ type: "highlight", id: "h", quads: [q(60, 755, 300, 779), q(60, 705, 280, 729)], ...props });
+  });
+
+  it("clamps to the page box and drops quads left without area", () => {
+    const h = highlightFromQuads("h", [q(-20, 790, 700, 830), q(10, 900, 50, 950)], props, box);
+    expect(h?.type === "highlight" && h.quads).toEqual([q(0, 790, 600, 800)]);
+    expect(highlightFromQuads("h", [q(10, 900, 50, 950)], props, box)).toBeNull();
+    expect(highlightFromQuads("h", [], props, box)).toBeNull();
   });
 });

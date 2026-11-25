@@ -14,7 +14,7 @@ import {
 import type { Page } from "../bindings/Page";
 import type { PageObject } from "../bindings/PageObject";
 import type { Point } from "../bindings/Point";
-import { commitNewObject, commitObject } from "../app/objectActions";
+import { commitNewObject, commitObject, highlightTextSelection } from "../app/objectActions";
 import { cssMatrix, displayRotation, rectToScreen, screenAxes, toScreen, toUser, type PageTransform } from "../coords";
 import { useSignatureStore } from "../signatures/signatureStore";
 import { useEditorStore } from "../editor/editorStore";
@@ -36,7 +36,7 @@ import { objectSvg, type OverlayAssets } from "../overlay/svg";
 import { TEXT_FONT_FAMILY } from "../editor/fonts";
 import { TEXT_ASCENT } from "../editor/textLayout";
 import { TextEditor } from "./TextEditor";
-import { clearTextSelection } from "../viewer/textLayer";
+import { clearTextSelection, startTextDrag, textAt, TEXT_LAYER_CLASS } from "../viewer/textLayer";
 
 /** Pointer travel (screen px) below which a press counts as a click. */
 export const CLICK_SLOP_PX = 4;
@@ -116,10 +116,13 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   /** The pointer is over an object or a handle (select tool). Elsewhere the layer lets the
    *  pointer through to the page text below it, so text can be selected (M12, D47). */
   const [hover, setHover] = useState(false);
+  /** The pointer is over page text (highlight tool). */
+  const [overText, setOverText] = useState(false);
   /** Pointer position (user space) while the signature tool shows its preview. */
   const [ghostAt, setGhostAt] = useState<Point | null>(null);
   const lib = useSignatureStore((s) => (tool === "signature" ? s.list.find((x) => x.id === s.current) : undefined));
-  const [dragKind, setDragKind] = useState<Drag["kind"] | null>(null);
+  const [dragKind, setDragKind] = useState<Drag["kind"] | "text" | null>(null);
+  const anyDragging = useEditorStore((s) => s.dragging);
   const editing = useEditorStore((s) => (s.editing?.pageId === page.id ? s.editing : null));
 
   const scale = Math.hypot(transform.matrix[0], transform.matrix[1]);
@@ -156,7 +159,14 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     hoverAt.current = (e: PointerEvent) => {
       // Not while a button is down: a text selection being dragged across an object must
       // not switch the layer under it.
-      if (drag.current || e.buttons !== 0 || tool !== "select") return;
+      if (drag.current || e.buttons !== 0) return;
+      if (tool === "highlight") {
+        // A text cursor over page text: a drag there highlights the glyphs (M13).
+        const textLayer = layerRef.current?.parentElement?.querySelector<HTMLElement>(`.${TEXT_LAYER_CLASS}`);
+        setOverText(!!textLayer && textAt(textLayer, e.clientX, e.clientY));
+        return;
+      }
+      if (tool !== "select") return;
       const p = userAt(e);
       const current = selectedId ? page.objects.find((o) => o.id === selectedId) : undefined;
       const onHandle =
@@ -214,6 +224,29 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
       editor.select(null);
       editor.setEditing({ pageId: page.id, objectId: null, origin, rotation: displayRotation(page.baseRotation, page.userRotation) });
       return;
+    }
+    if (tool === "highlight") {
+      // On page text the highlight follows the selected glyphs (M13, D48); elsewhere it is a box.
+      const el = layerRef.current!;
+      const textLayer = el.parentElement?.querySelector<HTMLElement>(`.${TEXT_LAYER_CLASS}`);
+      if (textLayer && textAt(textLayer, e.clientX, e.clientY)) {
+        editor.select(null);
+        // Let the caret hit tests reach the text under this layer.
+        el.style.pointerEvents = "none";
+        const done = () => {
+          el.style.pointerEvents = "";
+          setDragKind(null);
+          useEditorStore.getState().setDragging(false);
+        };
+        setDragKind("text");
+        editor.setDragging(true);
+        const started = startTextDrag(e.nativeEvent, textLayer, () => {
+          done();
+          highlightTextSelection(false);
+        });
+        if (!started) done();
+        return;
+      }
     }
     if (tool === "select") {
       const key = (e.target as Element).closest("[data-handle]")?.getAttribute("data-handle");
@@ -331,8 +364,18 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     : shown;
   const selectedObject = selectedId ? objects.find((o) => o.id === selectedId) : undefined;
 
-  const passThrough = tool === "select" && !editing && !dragKind && !hover;
-  const cursor = tool === "text" ? "text" : tool !== "select" ? "crosshair" : hover || dragKind === "move" ? "move" : "default";
+  // A text drag (highlight tool) on any page lets the pointer through every page's layer, so
+  // the selection end can be placed on the text below.
+  const passThrough =
+    (tool === "select" && !editing && !dragKind && !hover) || dragKind === "text" || (anyDragging && !dragKind);
+  const cursor =
+    tool === "text" || (tool === "highlight" && overText)
+      ? "text"
+      : tool !== "select"
+        ? "crosshair"
+        : hover || dragKind === "move"
+          ? "move"
+          : "default";
 
   return (
     <div

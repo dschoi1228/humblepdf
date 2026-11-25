@@ -200,6 +200,56 @@ test("text under a highlight stays dark on screen and in the saved PDF", async (
   expect(diff).toBeLessThanOrEqual(TOLERANCE_PX);
 });
 
+test("text highlights (one quad per line) match the saved PDF within 1px and reopen unchanged", async ({ page }) => {
+  // M13: three lines on the upright page and on its /Rotate 90 copy.
+  await openAt100(page, ["text_select.pdf"]);
+  const shots: Buffer[] = [];
+  for (const index of [0, 1]) {
+    await showPage(page, index);
+    await page.waitForFunction(
+      (i) => document.querySelector(`[data-testid=page][data-page-index="${i}"] [data-testid=text-layer][data-ready='1'] span`) !== null,
+      index,
+    );
+    await page.keyboard.press("KeyH");
+    await drag(page, index, { x: 61, y: 768 }, { x: 520, y: 668 });
+    shots.push(await shoot(page, index, true));
+  }
+  const before = await page.evaluate(() => window.__viewer!.model());
+  for (const index of [0, 1]) {
+    const [h] = before.pages[index].objects;
+    expect(h.type === "highlight" && h.quads.length).toBe(3);
+  }
+  await save(page, "/__out/m3/match/text_highlight.pdf", "text_highlight.pdf");
+  for (const index of [0, 1]) {
+    const r = await compare(page, {
+      sourceUrl: fixtureUrl("text_select.pdf"),
+      sourcePage: index + 1,
+      exportedUrl: "/__out/m3/match/text_highlight.pdf",
+      exportedPage: index + 1,
+      overlayShot: shots[index],
+    });
+    writeFileSync(join(outDir, `text_highlight_p${index + 1}_editor.png`), shots[index]);
+    writeFileSync(join(outDir, `text_highlight_p${index + 1}_exported.png`), Buffer.from(r.images.exported.split(",")[1], "base64"));
+    const diff = Math.max(...(["x0", "y0", "x1", "y1"] as const).map((k) => Math.abs(r.overlay![k] - r.exported![k])));
+    expect(diff, `page ${index + 1}`).toBeLessThanOrEqual(TOLERANCE_PX);
+  }
+
+  // Opened again, the saved highlights come back with the same quads (D37).
+  await page.goto("/?open=/__out/m3/match/text_highlight.pdf");
+  await waitForRenders(page);
+  const after = await page.evaluate(() => window.__viewer!.model());
+  for (const index of [0, 1]) {
+    const [a] = after.pages[index].objects;
+    const [b] = before.pages[index].objects;
+    if (a?.type !== "highlight" || b.type !== "highlight") throw new Error(`page ${index + 1}: no highlight`);
+    expect(a.quads).toHaveLength(3);
+    a.quads.forEach((q, i) => q.forEach((p, j) => {
+      expect(p.x).toBeCloseTo(b.quads[i][j].x, 2);
+      expect(p.y).toBeCloseTo(b.quads[i][j].y, 2);
+    }));
+  }
+});
+
 test("text under a signature's transparent background stays visible on screen and in the saved PDF", async ({ page }) => {
   await openAt100(page, ["korean_embedded.pdf"]);
   const box = (await page.evaluate(() => window.__viewer!.model())).pages[0].box;

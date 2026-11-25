@@ -328,6 +328,30 @@ export function newObject(input: NewObjectInput): PageObject | null {
   return { type: tool, id, rect, ...(input.props as ShapeProps) };
 }
 
+/** Thinnest side (pt) of a text highlight quad that is kept; thinner ones are empty runs. */
+export const MIN_QUAD_SIDE = 0.5;
+
+/**
+ * Highlight over page text (M13, D48): one quad per line, already in quad point order
+ * (upper left, upper right, lower left, lower right as the text reads). Points are clamped
+ * to the page box; quads left without area are dropped. Null when none is left.
+ */
+export function highlightFromQuads(
+  id: string,
+  quads: readonly (readonly [Point, Point, Point, Point])[],
+  props: HighlightProps,
+  box: Rect,
+): PageObject | null {
+  const kept = quads
+    .map((q) => q.map((p) => clampPoint(p, box)) as [Point, Point, Point, Point])
+    .filter((q) => {
+      const b = boundsOf(q);
+      return b.x1 - b.x0 >= MIN_QUAD_SIDE && b.y1 - b.y0 >= MIN_QUAD_SIDE;
+    });
+  if (!kept.length) return null;
+  return { type: "highlight", id, quads: kept, color: props.color, opacity: props.opacity };
+}
+
 /** Width of a placed signature as a fraction of the page width on screen (SPEC 6.8). */
 export const SIGNATURE_WIDTH_RATIO = 0.25;
 

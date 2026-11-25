@@ -122,6 +122,7 @@ export const ja: Strings = {
     opacity: "不透明度",
     deleteObject: "オブジェクトを削除",
     hint: "オブジェクトをクリックして選択します。追加するには左のツールを選んでください。",
+    highlightTip: "文字の上をドラッグすると文字に、空いた所では範囲に塗ります",
     colors: {
       black: "黒",
       red: "赤",
@@ -196,6 +197,7 @@ export const ja: Strings = {
       rotate: "ページを左・右に回転",
       deletePages: "選択したページを削除（オブジェクトを選択していないとき）",
       tools: "選択、テキスト、ハイライト、四角形、楕円、直線、矢印、署名ツール",
+      highlightText: "選択した本文テキストをハイライト（テキストを選択しているとき）",
       textNewLine: "改行",
       textCommit: "確定",
       textCancel: "キャンセル",

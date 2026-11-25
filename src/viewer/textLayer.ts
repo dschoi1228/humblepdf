@@ -6,8 +6,12 @@
 // between lines, in the margin) at an unrelated place, and a drag that starts there selects
 // nothing. Here such a point snaps to the line it is on, or to the start of the next line.
 // Double-click (word) and triple-click (line) stay with the browser.
+//
+// The highlight tool (M13, D48) drags the same selection and turns it into one quad per
+// line (`selectionQuads`).
 import { TextLayer, normalizeUnicode } from "pdfjs-dist";
 import type { PDFPageProxy } from "pdfjs-dist";
+import { mergeLines, readingBox, readingQuad, toReading, type Box, type ClientQuad } from "./readingFrame";
 
 /** Class of every text layer div; selection checks look for it. */
 export const TEXT_LAYER_CLASS = "textLayer";
@@ -69,28 +73,6 @@ export function selectedText(): string {
 // ---- Caret placement ----
 
 type Caret = { node: Node; offset: number };
-/** A box in the layer's reading frame: x grows along the line, y down the page. */
-type Box = { x0: number; y0: number; x1: number; y1: number };
-
-/** Client point -> reading frame of a layer turned by `rotation` (multiple of 90). */
-export function toReading(rotation: number, x: number, y: number): [number, number] {
-  switch (((rotation % 360) + 360) % 360) {
-    case 90:
-      return [y, -x];
-    case 180:
-      return [-x, -y];
-    case 270:
-      return [-y, x];
-    default:
-      return [x, y];
-  }
-}
-
-function readingBox(rotation: number, r: DOMRect): Box {
-  const [ax, ay] = toReading(rotation, r.left, r.top);
-  const [bx, by] = toReading(rotation, r.right, r.bottom);
-  return { x0: Math.min(ax, bx), y0: Math.min(ay, by), x1: Math.max(ax, bx), y1: Math.max(ay, by) };
-}
 
 function textNodeOf(span: Element): Text | null {
   for (const n of span.childNodes) if (n.nodeType === Node.TEXT_NODE) return n as Text;
@@ -108,6 +90,19 @@ function spansOf(layer: HTMLElement, rotation: number) {
     out.push({ text, box: readingBox(rotation, r) });
   }
   return out;
+}
+
+/** Pointer slack (px) around the glyph boxes for `textAt`. */
+export const TEXT_HIT_SLOP_PX = 4;
+
+/** True when client (x, y) is on the text of `layer` (within TEXT_HIT_SLOP_PX). */
+export function textAt(layer: HTMLElement, x: number, y: number): boolean {
+  const rotation = Number(layer.getAttribute("data-main-rotation") ?? 0);
+  const [px, py] = toReading(rotation, x, y);
+  const s = TEXT_HIT_SLOP_PX;
+  return spansOf(layer, rotation).some(
+    ({ box }) => px >= box.x0 - s && px <= box.x1 + s && py >= box.y0 - s && py <= box.y1 + s,
+  );
 }
 
 /** Where a selection end at client (x, y) goes in `layer`; null when it has no text. */
@@ -143,6 +138,53 @@ export function caretAt(layer: HTMLElement, x: number, y: number): Caret | null 
   return { node: last.text, offset: last.text.data.length };
 }
 
+// ---- Selection -> highlight quads ----
+
+/** Thinnest selected glyph run (px) that counts; thinner ones are empty runs. */
+const MIN_RUN_PX = 0.5;
+
+/**
+ * The text selection as one quad per line, grouped by page (`pageIndex` is the page
+ * element's `data-page-index`). Client coordinates; the caller converts them to user space.
+ */
+export function selectionQuads(): { pageIndex: number; quads: ClientQuad[] }[] {
+  const sel = document.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return [];
+  const range = sel.getRangeAt(0);
+  const out: { pageIndex: number; quads: ClientQuad[] }[] = [];
+  for (const layer of document.querySelectorAll<HTMLElement>(`.${TEXT_LAYER_CLASS}`)) {
+    if (!range.intersectsNode(layer)) continue;
+    const index = Number(layer.closest("[data-testid=page]")?.getAttribute("data-page-index"));
+    if (!Number.isInteger(index)) continue;
+    const rotation = Number(layer.getAttribute("data-main-rotation") ?? 0);
+    const boxes: Box[] = [];
+    // Text node by text node: a range across pages also holds whole elements (canvas, object
+    // layer) whose boxes are not text.
+    for (const span of layer.querySelectorAll("span:not(.markedContent)")) {
+      const text = textNodeOf(span);
+      if (!text || !text.data.length || !range.intersectsNode(text)) continue;
+      const part = document.createRange();
+      part.selectNodeContents(text);
+      if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) part.setStart(range.startContainer, range.startOffset);
+      if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) part.setEnd(range.endContainer, range.endOffset);
+      if (part.collapsed) continue;
+      // Across the line: the span's box (one font size tall, placed by pdf.js from the font's
+      // ascent). The selection rectangles are as tall as the browser's fallback font, which
+      // for CJK text is much taller than the PDF glyphs. Along the line: the selected part.
+      const line = readingBox(rotation, span.getBoundingClientRect());
+      for (const r of part.getClientRects()) {
+        if (r.width < MIN_RUN_PX || r.height < MIN_RUN_PX) continue;
+        const run = readingBox(rotation, r);
+        if (run.x1 - run.x0 < MIN_RUN_PX) continue;
+        boxes.push({ x0: run.x0, x1: run.x1, y0: line.y0, y1: line.y1 });
+      }
+    }
+    const quads = mergeLines(boxes).map((b) => readingQuad(rotation, b));
+    if (quads.length) out.push({ pageIndex: index, quads });
+  }
+  return out;
+}
+
 // ---- Dragging ----
 
 /** Distance from the scroll view's edge (px) where a drag scrolls it, and the most per frame. */
@@ -158,15 +200,19 @@ function layerAt(x: number, y: number, fallback: HTMLElement): HTMLElement {
   return fallback;
 }
 
-function startDrag(e: MouseEvent, layer: HTMLElement) {
+/**
+ * Starts a drag selection at the press `e` in `layer`. `onEnd` runs when the button is
+ * released (not when Esc cancels the drag). Returns false when there is nothing to select.
+ */
+export function startTextDrag(e: MouseEvent, layer: HTMLElement, onEnd?: () => void): boolean {
   const sel = document.getSelection();
-  if (!sel) return;
+  if (!sel) return false;
   const scroller = layer.closest<HTMLElement>("[data-testid=page-view]");
   const extend = e.shiftKey && hasTextSelection() && !!sel.anchorNode;
   const anchor: Caret | null = extend
     ? { node: sel.anchorNode!, offset: sel.anchorOffset }
     : caretAt(layer, e.clientX, e.clientY);
-  if (!anchor) return;
+  if (!anchor) return false;
   e.preventDefault();
   let point = { x: e.clientX, y: e.clientY };
   let current = layer;
@@ -194,20 +240,45 @@ function startDrag(e: MouseEvent, layer: HTMLElement) {
       autoscroll();
     });
   };
-  const move = (m: MouseEvent) => {
+  // Pointer events: a press that the object layer took (highlight tool) has no mouse events.
+  const move = (m: PointerEvent) => {
     point = { x: m.clientX, y: m.clientY };
     update();
     if (!frame) autoscroll();
   };
-  const up = () => {
+  const stop = () => {
     cancelAnimationFrame(frame);
-    window.removeEventListener("mousemove", move, true);
-    window.removeEventListener("mouseup", up, true);
-    window.removeEventListener("blur", up);
+    window.removeEventListener("pointermove", move, true);
+    window.removeEventListener("pointerup", up, true);
+    window.removeEventListener("pointercancel", cancel, true);
+    window.removeEventListener("blur", cancel);
+    window.removeEventListener("keydown", key, true);
   };
-  window.addEventListener("mousemove", move, true);
-  window.addEventListener("mouseup", up, true);
-  window.addEventListener("blur", up);
+  const up = () => {
+    stop();
+    onEnd?.();
+  };
+  // A drag that is cut off (or cancelled with Esc) leaves no selection to act on.
+  const cancel = () => {
+    stop();
+    if (onEnd) {
+      sel.removeAllRanges();
+      onEnd();
+    }
+  };
+  const key = (k: KeyboardEvent) => {
+    if (k.key !== "Escape") return;
+    k.preventDefault();
+    k.stopImmediatePropagation();
+    sel.removeAllRanges();
+    cancel();
+  };
+  window.addEventListener("pointermove", move, true);
+  window.addEventListener("pointerup", up, true);
+  window.addEventListener("pointercancel", cancel, true);
+  window.addEventListener("blur", cancel);
+  window.addEventListener("keydown", key, true);
+  return true;
 }
 
 // One document-level handler for copying out of any text layer and for drag selection.
@@ -223,6 +294,6 @@ export function installTextSelection(): void {
   document.addEventListener("mousedown", (e) => {
     if (e.button !== 0 || e.detail > 1 || e.ctrlKey || e.altKey || e.metaKey) return;
     const layer = (e.target as Element | null)?.closest?.<HTMLElement>(`.${TEXT_LAYER_CLASS}`);
-    if (layer) startDrag(e, layer);
+    if (layer) startTextDrag(e, layer);
   });
 }
