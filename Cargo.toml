@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/core", "crates/cli", "src-tauri"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 publish = false
@@ -23,6 +23,7 @@ tauri = "=2.12.5"
 tauri-build = "=2.7.4"
 tauri-plugin-dialog = "=2.8.4"
 tauri-plugin-window-state = "=2.5.0"
+tauri-plugin-single-instance = "=2.5.5"
 
 [profile.release]
 codegen-units = 1

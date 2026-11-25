@@ -83,6 +83,14 @@ export const en: Strings = {
     missingGlyphs: (chars: string) => `Some characters are not in the bundled font and were saved as blanks: ${chars}`,
   },
 
+  incoming: {
+    title: "Open files",
+    question: (n: number) => (n === 1 ? "How should this file be opened?" : `How should these ${n} files be opened?`),
+    add: "Add to this document",
+    newWindow: "Open in a new window",
+    cancel: "Cancel",
+  },
+
   unsaved: {
     title: "You have unsaved changes",
     newDocument: "Save the current document before starting a new one?",

@@ -44,7 +44,8 @@ npm run dev                  브라우저 모드(백엔드 mock)로 프런트엔
                              /__fixtures/, /__out/ 의 PDF는 개발 서버(/__inspect, /__render)가 CLI로 되살린 객체를 준다.
                              브라우저 모드의 이미지는 core가 계산한 레이아웃(out/e2e/info/)이 있어야 열린다.
                              npm run e2e를 한 번 돌리면 생긴다. 저장은 out/ 아래에만 하며 디버그 CLI가 필요하다(같은 명령이 빌드)
-npm run build:exe            포터블 exe 빌드 → target/release/HumblePDF.exe (설치 프로그램 없음)
+npm run build:exe            포터블 exe 빌드 → target/release/HumblePDF.exe
+npm run build:installer      포터블 exe와 설치 파일 빌드 → target/release/bundle/nsis/HumblePDF_<버전>_x64-setup.exe
 cargo test --workspace       코어·CLI 테스트 (출력 PDF 재파싱 테스트 포함)
 npm test                     프런트엔드 단위 테스트 (Vitest. 좌표 변환, core 상자 vs pdf.js)
 npm run e2e                  E2E·화면 일치 테스트 (Playwright, 설치된 Edge 사용). 준비 단계가 CLI를 빌드해 쓴다

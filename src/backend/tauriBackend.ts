@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type { ExportSummary } from "../bindings/ExportSummary";
 import { baseName } from "../state/model";
@@ -49,6 +50,15 @@ export const tauriBackend: Backend = {
 
   startupFiles() {
     return invoke<string[]>("startup_files");
+  },
+
+  onOpenFiles(cb) {
+    // Sent by the shell to this window only (emit_to its label).
+    return getCurrentWebviewWindow().listen<string[]>("open-files", (e) => cb(toPicked(e.payload)));
+  },
+
+  openWindow(paths) {
+    return invoke<void>("open_window", { files: paths });
   },
 
   exportDocument(model, outPath, passwords, flatten = false) {

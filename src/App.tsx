@@ -1,7 +1,8 @@
 // App shell: toolbar, thumbnail panel, page view, password dialog and error toasts.
 import { printDocument } from "./app/print";
+import { IncomingFilesDialog } from "./components/IncomingFilesDialog";
 import { useEffect, useRef } from "react";
-import { addFiles, pickAndAddFiles } from "./app/actions";
+import { addFiles, openIncoming, pickAndAddFiles } from "./app/actions";
 import { deleteTargets, rotateTargets } from "./app/pageActions";
 import {
   copySelectedObject,
@@ -164,6 +165,15 @@ export default function App() {
         else unlisten = u;
       });
 
+    // Files from a second launch (double-click while the app runs, D46).
+    let unOpen: (() => void) | undefined;
+    void backend
+      .onOpenFiles((files) => void openIncoming(files))
+      .then((u) => {
+        if (cancelled) u();
+        else unOpen = u;
+      });
+
     // Unsaved changes are confirmed before the window closes (SPEC 6.1).
     let unguard: (() => void) | undefined;
     void backend
@@ -230,6 +240,7 @@ export default function App() {
       cancelled = true;
       unlisten?.();
       unguard?.();
+      unOpen?.();
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
@@ -247,6 +258,7 @@ export default function App() {
       <PasswordDialog />
       <SavingDialog />
       <UnsavedDialog />
+      <IncomingFilesDialog />
       <SignatureDialog />
       <HelpDialog />
       <AboutDialog />

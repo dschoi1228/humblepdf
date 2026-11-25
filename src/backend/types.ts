@@ -80,6 +80,13 @@ export interface Backend {
    * Handed out once. Browser mode: the `?open=` list.
    */
   startupFiles(): Promise<string[]>;
+  /**
+   * Files from a second launch (double-click while the app runs), handed to this window
+   * (D46). Returns an unsubscribe function.
+   */
+  onOpenFiles(cb: (files: PickedFile[]) => void): Promise<() => void>;
+  /** Opens the files in a new window of the app (D46). */
+  openWindow(paths: string[]): Promise<void>;
   /** Shows the window, which starts hidden so it appears with its first screen drawn (D42). */
   showWindow(): Promise<void>;
   /** M0 measurement hook (see src-tauri `bench_config`). */

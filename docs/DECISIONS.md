@@ -412,6 +412,21 @@
 - 이유: 서명하고 표시한 문서를 종이로 내는 일이 가장 흔한 마지막 단계다. 새 의존성 없이 WebView2에 이미 있는 뷰어를 쓴다.
 - 재검토 조건: WebView2가 blob PDF의 인쇄를 막도록 바뀌거나, 사용자 PC에서 벡터 인쇄 결과가 화면과 다를 때.
 
+### D46. 설치 파일, 연결 프로그램, 단일 인스턴스 (M11)
+
+- 결정
+  - 설치 파일: Tauri에 들어 있는 NSIS 번들러(`npm run build:installer`, `HumblePDF_<버전>_x64-setup.exe`). 사용자별 설치(`currentUser`, `%LOCALAPPDATA%\Programs`, 관리자 권한 없음, 사용자 결정). 설치 화면은 한국어·영어·일본어(Windows 언어를 따른다). WebView2 설치 단계는 건너뛴다(`webviewInstallMode: skip`, Windows 11에 있다, 오프라인 원칙). 포터블 exe도 계속 배포한다. 두 방식은 같은 앱 데이터 폴더를 써서 서명과 설정을 함께 쓴다.
+  - 압축은 `zlib`. Tauri 기본값인 LZMA 모듈은 CPL-1.0(링크 예외 있음)이라 허용 목록 밖이다. zlib 모듈과 NSIS 본체는 zlib/libpng 라이선스다. 설치 파일이 약 8.5MB로 LZMA보다 1.6MB 크다.
+  - 연결 프로그램: Tauri의 `fileAssociations`를 쓰지 않는다. 그 매크로는 `HKCU\Software\Classes\.pdf`의 기본값을 바꿔, 사용자가 고르지 않은 PC에서는 기본 앱을 가져간다. 대신 설치 훅(`src-tauri/windows/hooks.nsh`)이 HKCU에 ProgID `HumblePDF.Document`, `.pdf\OpenWithProgids`, Capabilities와 `RegisteredApplications`를 써서 "연결 프로그램"과 설정 > 기본 앱에만 나오게 한다. 기본 앱은 사용자가 고른다(Windows 11 규칙). 제거할 때 지운다. 포터블 exe로 직접 고른 연결(`Classes\Applications\HumblePDF.exe`)은 건드리지 않는다.
+  - 단일 인스턴스: 공식 플러그인 `tauri-plugin-single-instance`. 두 번째 실행은 인자(작업 폴더 기준으로 푼 경로)를 넘기고 끝난다. 셸은 마지막으로 포커스를 가진 창을 앞으로 가져와 `open-files` 이벤트를 그 창에만 보낸다.
+  - 받은 파일: 빈 창이면 연다(D42 규칙대로 파일 하나면 변경이 아니다). 쪽이 있으면 "지금 문서에 추가 / 새 창에서 열기 / 취소"를 묻는다(사용자 결정. 처음 SPEC의 "항상 추가"는 다른 문서를 보려던 경우에도 합쳐져 바꿨다).
+  - 새 창: Tauri 명령 `open_window`가 `doc-N` 창을 만들고 그 창의 시작 파일을 넘긴다(`startup_files`가 호출한 창의 라벨로 찾는다). 권한(capabilities)은 `main`과 `doc-*`에 준다. 창 상태 플러그인은 `main`만 기억한다(새 창은 띄운 창 옆에 열린다).
+- 의존성 추가
+  - `tauri-plugin-single-instance` 2.5.5 (MIT OR Apache-2.0)
+  - 설치 파일에만: NSIS 3.13 (zlib/libpng), `nsis_tauri_utils` 0.5.3 (MIT OR Apache-2.0). 빌드할 때 Tauri CLI가 GitHub에서 받는다(앱 실행 중 네트워크와 무관). 라이선스 원문은 `assets/licenses/`에 두고 `npm run notices`가 고지에 넣는다.
+- 이유: 매일 쓰는 PDF 도구로 쓰려면 설치·제거와 "연결 프로그램"이 자연스러워야 하고, 더블클릭할 때마다 창이 늘어나지 않아야 한다. 사용자가 고른 기본 앱은 존중한다.
+- 재검토 조건: 코드 서명을 도입할 때(SmartScreen), 모든 사용자용 설치 요청이 있을 때.
+
 ## 미정
 
 없음. 정할 일이 생기면 여기에 표로 적는다.
@@ -453,6 +468,8 @@
 | Pretendard JP Regular (TTF, `packages/pretendard-jp/dist/public/static/alternative/`, M5) | 1.3.9 (main 브랜치, 2026-11-23 내려받음) | OFL 1.1 (`assets/fonts/OFL-PretendardJP.txt`) |
 | fontTools (개발 때만, `npm run fonts`, M5) | 4.68.0 | MIT |
 | tauri-plugin-window-state (M7) | 2.5.0 | MIT OR Apache-2.0 |
+| tauri-plugin-single-instance (M11) | 2.5.5 | MIT OR Apache-2.0 |
+| NSIS (설치 파일, M11) / nsis_tauri_utils | 3.13 / 0.5.3 | zlib/libpng / MIT OR Apache-2.0 |
 | GitHub Actions: actions/checkout, setup-node, cache, upload-artifact (M7, 커밋 해시 고정) | 7.0.1, 7.1.0, 6.1.0, 7.0.2 | MIT |
 
 - D4의 대안 qpdf 크레이트는 0.3.7이다(도입하지 않음).

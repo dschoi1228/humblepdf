@@ -13,11 +13,23 @@ and can be changed from the toolbar.
 
 ## Download and run
 
-1. Download `HumblePDF.exe` from the [Releases](../../releases) page. It is a single portable
-   file: no installer, nothing else to download (Windows 11 already includes WebView2).
-2. Run it. Windows may show **"Windows protected your PC"** (SmartScreen) because the exe is not
-   code-signed. Click **More info → Run anyway** if you trust the download. Each release lists
-   the SHA-256 hash of the exe so you can check it.
+Each [release](../../releases) has two files; both are the same app.
+
+- **`HumblePDF_<version>_x64-setup.exe`** (recommended): installs for your user account only,
+  without administrator rights. Adds a Start menu shortcut, an entry in **Settings → Apps** to
+  uninstall it, and offers HumblePDF in **Open with** for PDF files.
+- **`HumblePDF.exe`**: a single portable file. Run it from any folder; nothing is installed.
+
+Windows 11 already includes WebView2, so nothing else is downloaded. Windows may show
+**"Windows protected your PC"** (SmartScreen) because the files are not code-signed. Click
+**More info → Run anyway** if you trust the download. Each release lists the SHA-256 hashes so
+you can check them.
+
+To make HumblePDF the default app for PDFs, right-click a PDF → **Open with → Choose another
+app**, pick HumblePDF and select **Always** (or use **Settings → Apps → Default apps**). Windows
+lets only you make that choice. While HumblePDF is running, double-clicking another PDF brings
+its window to the front: an empty window opens the file, otherwise HumblePDF asks whether to
+add it to the current document or open it in a new window.
 
 HumblePDF never connects to the internet. It keeps only small settings files in your user
 profile:
@@ -73,6 +85,7 @@ end-to-end tests).
 npm install
 npm run tauri dev        # run the app (development build)
 npm run build:exe        # portable exe at target/release/HumblePDF.exe
+npm run build:installer  # also the installer at target/release/bundle/nsis/
 ```
 
 If PowerShell's execution policy blocks `npm.ps1`, use `npm.cmd` instead of `npm`.

@@ -2,7 +2,7 @@
   "name": "humblepdf",
   "description": "A humble little PDF tool: merge, sign, mark up. Fully offline.",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:exe": "tauri build --no-bundle",
+    "build:installer": "tauri build --bundles nsis",
     "bindings": "node scripts/run-with-env.mjs UPDATE_BINDINGS=1 -- cargo test -p humblepdf-core --test bindings",
     "fixtures": "cargo run -q -p humblepdf-core --example gen_fixtures --release -- --large",
     "sample": "node scripts/sample.mjs",

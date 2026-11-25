@@ -84,6 +84,14 @@ export const ja: Strings = {
     missingGlyphs: (chars: string) => `同梱フォントにない文字があるため、空白として保存しました: ${chars}`,
   },
 
+  incoming: {
+    title: "ファイルを開く",
+    question: (n: number) => (n === 1 ? "このファイルをどのように開きますか？" : `${n}個のファイルをどのように開きますか？`),
+    add: "今の文書に追加",
+    newWindow: "新しいウィンドウで開く",
+    cancel: "キャンセル",
+  },
+
   unsaved: {
     title: "保存されていない変更があります",
     newDocument: "新しいドキュメントを始める前に、現在のドキュメントを保存しますか？",

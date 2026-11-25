@@ -233,6 +233,20 @@ export const mockBackend: Backend = {
 
   async showWindow() {},
 
+  async onOpenFiles(cb) {
+    // Browser mode and E2E: window.__openFiles(paths) stands in for a second launch.
+    const handler = (paths: string[]) => cb(paths.map((path) => ({ path, name: baseName(path) })));
+    window.__openFiles = handler;
+    return () => {
+      if (window.__openFiles === handler) delete window.__openFiles;
+    };
+  },
+
+  async openWindow(paths) {
+    (window.__openedWindows ??= []).push(paths);
+    if (!navigator.webdriver) window.open(`/?open=${paths.join(",")}`, "_blank");
+  },
+
   async startupFiles() {
     // Browser-mode convenience: ?open=/__fixtures/a.pdf,/__fixtures/b.pdf
     const open = new URLSearchParams(window.location.search).get("open");
@@ -248,3 +262,12 @@ export const mockBackend: Backend = {
     console.info(report);
   },
 };
+
+declare global {
+  interface Window {
+    /** Browser mode: simulates files arriving from a second launch (D46). */
+    __openFiles?: (paths: string[]) => void;
+    /** Browser mode: the file lists passed to openWindow. */
+    __openedWindows?: string[][];
+  }
+}

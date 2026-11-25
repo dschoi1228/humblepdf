@@ -1,6 +1,6 @@
 # 릴리스 점검표
 
-공개 릴리스 전에 사람이 확인하는 항목이다. 자동 테스트(CI)가 통과한 커밋에서 `npm run build:exe`로 만든 `target\release\HumblePDF.exe`로 확인한다. 실제 문서나 서명 대신 `tests\fixtures`의 합성 파일을 쓴다.
+공개 릴리스 전에 사람이 확인하는 항목이다. 자동 테스트(CI)가 통과한 커밋에서 `npm run build:installer`로 만든 `target\release\HumblePDF.exe`와 설치 파일(`target\release\bundle\nsis\`)로 확인한다. 실제 문서나 서명 대신 `tests\fixtures`의 합성 파일을 쓴다.
 
 결과는 릴리스마다 `docs/M7_REPORT.md`(첫 릴리스) 또는 릴리스 노트에 적는다.
 
@@ -53,6 +53,13 @@
 - [ ] 썸네일 메뉴 "N쪽 인쇄…"는 고른 쪽만 문서 순서대로 인쇄한다.
 - [ ] 인쇄한 뒤에도 "저장하지 않은 변경" 상태와 Ctrl+S 대상이 그대로다.
 
+## 5.2 설치와 연결 프로그램 (M11)
+
+- [ ] 설치 파일이 관리자 권한(UAC) 없이 설치된다. 시작 메뉴에 HumblePDF가 생기고, 설정 > 앱에서 제거할 수 있다.
+- [ ] PDF 오른쪽 클릭 → 연결 프로그램에 HumblePDF가 아이콘과 함께 나오고, 설정 > 기본 앱에도 나온다. 설치만으로 기본 앱이 바뀌지는 않는다.
+- [ ] 앱이 켜진 상태에서 PDF를 더블클릭하면 창이 하나 더 생기지 않고 기존 창이 앞으로 온다. 빈 창이면 열고, 문서가 있으면 추가/새 창/취소를 묻는다. "새 창에서 열기"의 창은 따로 저장·닫기가 된다.
+- [ ] 제거하면 앱 파일과 연결 프로그램 항목이 사라진다. 포터블 exe로 해 둔 연결은 그대로다.
+
 ## 6. 다른 뷰어
 
 `npm run sample`로 샘플을 만들고, 앱에서 저장한 파일과 함께 Acrobat Reader, Edge, Chrome에서 연다.
@@ -71,5 +78,5 @@
 
 1. 버전을 올린다: `Cargo.toml`(`[workspace.package] version`), `package.json`, `src-tauri/tauri.conf.json`(있다면)을 같은 값으로 맞춘다. `npm install --package-lock-only`로 잠금 파일을 맞춘다.
 2. 위 점검표를 확인하고 결과를 적는다.
-3. `git tag v<버전>` 후 `git push origin v<버전>`. GitHub Actions의 Release 워크플로가 exe를 빌드해 **초안** 릴리스를 만든다(`HumblePDF.exe`, `HumblePDF.exe.sha256`, `LICENSE`, `THIRD_PARTY_NOTICES.md`).
+3. `git tag v<버전>` 후 `git push origin v<버전>`. GitHub Actions의 Release 워크플로가 exe와 설치 파일을 빌드해 **초안** 릴리스를 만든다(`HumblePDF.exe`, `HumblePDF_<버전>_x64-setup.exe`, 각각의 `.sha256`, `LICENSE`, `THIRD_PARTY_NOTICES.md`).
 4. GitHub의 Releases에서 초안의 설명을 채우고, 내려받은 exe의 해시가 맞는지 확인한 뒤 **Publish**한다.

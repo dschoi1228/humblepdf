@@ -82,6 +82,14 @@ export const ko = {
     missingGlyphs: (chars: string) => `번들 폰트에 없는 글자가 있어 빈칸으로 저장했습니다: ${chars}`,
   },
 
+  incoming: {
+    title: "파일 열기",
+    question: (n: number) => (n === 1 ? "이 파일을 어떻게 열까요?" : `파일 ${n}개를 어떻게 열까요?`),
+    add: "지금 문서에 추가",
+    newWindow: "새 창에서 열기",
+    cancel: "취소",
+  },
+
   unsaved: {
     title: "저장하지 않은 변경이 있습니다",
     newDocument: "새 문서를 시작하기 전에 지금 문서를 저장할까요?",

@@ -290,9 +290,20 @@ fn bundled_font(name: String) -> Result<Response, ErrorPayload> {
         })
 }
 
-/// Files given on the command line: Windows runs `HumblePDF.exe <path>` when the user
-/// double-clicks a file the app is the default for, or uses "Open with" (D42).
-struct StartupFiles(Mutex<Vec<String>>);
+/// Files each window opens when it starts, by window label: the command line for "main"
+/// (Windows runs `HumblePDF.exe <path>` for a double-click or "Open with", D42), and the files
+/// a new window was opened with (D46).
+#[derive(Default)]
+struct StartupFiles(Mutex<HashMap<String, Vec<String>>>);
+
+/// The window that last had the focus: files from a second launch go there (D46).
+struct LastFocused(Mutex<String>);
+
+/// Labels of the windows opened after "main".
+static NEXT_WINDOW: AtomicU64 = AtomicU64::new(2);
+
+/// Event carrying files from a second launch to a running window (D46).
+const OPEN_FILES_EVENT: &str = "open-files";
 
 /// Existing files among the arguments (without the program name), as absolute paths.
 /// Relative paths are resolved against `cwd`; flags and missing paths are skipped.
@@ -306,10 +317,92 @@ fn startup_files_from(args: impl IntoIterator<Item = OsString>, cwd: &Path) -> V
         .collect()
 }
 
-/// The command-line files, handed out once: a reload of the page does not add them again.
+/// The calling window's startup files, handed out once: a reload does not add them again.
 #[tauri::command]
-fn startup_files(state: State<'_, StartupFiles>) -> Vec<String> {
-    std::mem::take(&mut *state.0.lock().unwrap_or_else(|e| e.into_inner()))
+fn startup_files(window: tauri::WebviewWindow, state: State<'_, StartupFiles>) -> Vec<String> {
+    state
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(window.label())
+        .unwrap_or_default()
+}
+
+/// Shows a window that starts hidden if its frontend has not shown it after a few seconds
+/// (D42).
+fn show_later<R: tauri::Runtime>(window: tauri::WebviewWindow<R>) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        if !window.is_visible().unwrap_or(true) {
+            let _ = window.show();
+        }
+    });
+}
+
+/// Opens `files` in a new window (D46), placed a little below and right of the caller.
+/// Only existing files are passed on.
+#[tauri::command]
+async fn open_window(
+    files: Vec<String>,
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    state: State<'_, StartupFiles>,
+) -> Result<(), ErrorPayload> {
+    let files: Vec<String> = files
+        .into_iter()
+        .filter(|f| Path::new(f).is_file())
+        .collect();
+    let label = format!("doc-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
+    state
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(label.clone(), files);
+    let internal = |e: tauri::Error| ErrorPayload {
+        code: "internal",
+        message: e.to_string(),
+    };
+    let mut builder =
+        tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App("index.html".into()))
+            .title("HumblePDF")
+            .inner_size(1200.0, 800.0)
+            .visible(false);
+    if let (Ok(pos), Ok(scale)) = (window.outer_position(), window.scale_factor()) {
+        let p = pos.to_logical::<f64>(scale);
+        builder = builder.position(p.x + 32.0, p.y + 32.0);
+    }
+    let new = builder.build().map_err(internal)?;
+    show_later(new);
+    Ok(())
+}
+
+/// The files of a second launch: its arguments after the program name, resolved against
+/// the working directory it was started in (not this process's).
+fn second_launch_files(argv: Vec<String>, cwd: &str) -> Vec<String> {
+    startup_files_from(argv.into_iter().skip(1).map(OsString::from), Path::new(cwd))
+}
+
+/// A second launch (double-click while the app runs): bring the last focused window to the
+/// front and hand it the files; it opens them or asks how (D46).
+fn second_launch(app: &AppHandle, argv: Vec<String>, cwd: String) {
+    let files = second_launch_files(argv, &cwd);
+    let label = app
+        .state::<LastFocused>()
+        .0
+        .lock()
+        .map(|l| l.clone())
+        .unwrap_or_else(|_| "main".into());
+    let window = app
+        .get_webview_window(&label)
+        .or_else(|| app.webview_windows().into_values().next());
+    let Some(window) = window else { return };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+    if !files.is_empty() {
+        use tauri::Emitter;
+        let _ = window.emit_to(window.label(), OPEN_FILES_EVENT, files);
+    }
 }
 
 /// M0 measurement hook: when HUMBLEPDF_BENCH is set to a PDF path, the frontend opens it,
@@ -335,30 +428,39 @@ fn bench_report(report: String, app: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // First: a second launch hands its files to this process and exits (D46).
+        .plugin(tauri_plugin_single_instance::init(second_launch))
         .plugin(tauri_plugin_dialog::init())
         // Window position, size and maximized state are restored at start (D38). The plugin
         // does not show the window: the frontend shows it once the first screen is drawn
-        // (with the startup files, if any), so no empty window flashes first (D42).
+        // (with the startup files, if any), so no empty window flashes first (D42). Only the
+        // main window's state is kept; extra windows open next to the one they came from.
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .with_filter(|label| label == "main")
                 .build(),
         )
         .manage(Sources::default())
-        .manage(StartupFiles(Mutex::new(startup_files_from(
-            std::env::args_os().skip(1),
-            &std::env::current_dir().unwrap_or_default(),
-        ))))
+        .manage(StartupFiles(Mutex::new(HashMap::from([(
+            "main".to_string(),
+            startup_files_from(
+                std::env::args_os().skip(1),
+                &std::env::current_dir().unwrap_or_default(),
+            ),
+        )]))))
+        .manage(LastFocused(Mutex::new("main".into())))
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(true) = event
+                && let Ok(mut last) = window.state::<LastFocused>().0.lock()
+            {
+                *last = window.label().to_string();
+            }
+        })
         .setup(|app| {
-            // The window starts hidden (tauri.conf.json) and the frontend shows it. If the
-            // frontend never gets that far, show the window anyway after a few seconds.
+            // The window starts hidden (tauri.conf.json) and the frontend shows it.
             if let Some(window) = app.get_webview_window("main") {
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_secs(5));
-                    if !window.is_visible().unwrap_or(true) {
-                        let _ = window.show();
-                    }
-                });
+                show_later(window);
             }
             Ok(())
         })
@@ -376,6 +478,7 @@ pub fn run() {
             signature_bytes,
             bundled_font,
             startup_files,
+            open_window,
             bench_config,
             bench_report
         ])
@@ -409,6 +512,25 @@ mod tests {
                 dir.join("b.png").to_string_lossy().into_owned()
             ]
         );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn second_launch_files_skip_the_program_and_use_its_directory() {
+        let dir = std::env::temp_dir().join(format!("humblepdf-second-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("c.pdf"), b"%PDF-1.7").unwrap();
+        // The program path itself exists but is not a file to open.
+        let exe = std::env::current_exe()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let got = second_launch_files(
+            vec![exe, "c.pdf".into(), "--x".into()],
+            &dir.to_string_lossy(),
+        );
+        assert_eq!(got, vec![dir.join("c.pdf").to_string_lossy().into_owned()]);
+        assert!(second_launch_files(vec!["HumblePDF.exe".into()], "C:\\").is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
