@@ -1,4 +1,5 @@
 // App shell: toolbar, thumbnail panel, page view, password dialog and error toasts.
+import { clearTextSelection, hasTextSelection } from "./viewer/textLayer";
 import { printDocument } from "./app/print";
 import { IncomingFilesDialog } from "./components/IncomingFilesDialog";
 import { useEffect, useRef } from "react";
@@ -97,6 +98,8 @@ function runShortcut(action: ShortcutAction): boolean {
       if (!deleteSelectedObject()) deleteTargets();
       return true;
     case "copy":
+      // Selected page text goes to the clipboard through the browser's own copy (M12).
+      if (hasTextSelection()) return false;
       return copySelectedObject();
     case "paste":
       return pasteObject();
@@ -108,7 +111,7 @@ function runShortcut(action: ShortcutAction): boolean {
     case "escape":
       if (editor.tool !== "select") editor.setTool("select");
       else if (editor.selected) editor.select(null);
-      else return false;
+      else if (!clearTextSelection()) return false;
       return true;
     case "undo":
       doc.undo();

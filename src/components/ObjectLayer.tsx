@@ -5,6 +5,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -35,6 +36,7 @@ import { objectSvg, type OverlayAssets } from "../overlay/svg";
 import { TEXT_FONT_FAMILY } from "../editor/fonts";
 import { TEXT_ASCENT } from "../editor/textLayout";
 import { TextEditor } from "./TextEditor";
+import { clearTextSelection } from "../viewer/textLayer";
 
 /** Pointer travel (screen px) below which a press counts as a click. */
 export const CLICK_SLOP_PX = 4;
@@ -111,6 +113,8 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   const layerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const [draft, setDraft] = useState<PageObject | null>(null);
+  /** The pointer is over an object or a handle (select tool). Elsewhere the layer lets the
+   *  pointer through to the page text below it, so text can be selected (M12, D47). */
   const [hover, setHover] = useState(false);
   /** Pointer position (user space) while the signature tool shows its preview. */
   const [ghostAt, setGhostAt] = useState<Point | null>(null);
@@ -145,8 +149,54 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     return () => window.removeEventListener("keydown", onKey, true);
   }, [end]);
 
+  // Hover is tracked on the page element, which also sees the pointer while it is over the
+  // text layer (when this layer lets it through).
+  const hoverAt = useRef<(e: PointerEvent) => void>(() => {});
+  useLayoutEffect(() => {
+    hoverAt.current = (e: PointerEvent) => {
+      // Not while a button is down: a text selection being dragged across an object must
+      // not switch the layer under it.
+      if (drag.current || e.buttons !== 0 || tool !== "select") return;
+      const p = userAt(e);
+      const current = selectedId ? page.objects.find((o) => o.id === selectedId) : undefined;
+      const onHandle =
+        !!current &&
+        handlesOf(current).some(({ at }) => {
+          const s = toScreen(transform, at);
+          const r = layerRef.current!.getBoundingClientRect();
+          return Math.max(Math.abs(s.x - (e.clientX - r.left)), Math.abs(s.y - (e.clientY - r.top))) <= HANDLE_PX / 2 + 1;
+        });
+      const over = onHandle || !!hitTest(page.objects, p, HIT_TOLERANCE_PX / scale);
+      // Also on the element right away: a press that follows this move at once must already
+      // reach the layer, before React renders the new state.
+      if (layerRef.current && !editing) layerRef.current.style.pointerEvents = over ? "" : "none";
+      setHover(over);
+    };
+  });
+  useEffect(() => {
+    const pageEl = layerRef.current?.parentElement;
+    if (!pageEl) return;
+    const move = (e: PointerEvent) => hoverAt.current(e);
+    const leave = () => setHover(false);
+    // A press on the page text (outside this layer) clears the object selection.
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0 || layerRef.current?.contains(e.target as Node)) return;
+      if (useEditorStore.getState().tool === "select") useEditorStore.getState().select(null);
+    };
+    pageEl.addEventListener("pointermove", move);
+    pageEl.addEventListener("pointerleave", leave);
+    pageEl.addEventListener("pointerdown", down);
+    return () => {
+      pageEl.removeEventListener("pointermove", move);
+      pageEl.removeEventListener("pointerleave", leave);
+      pageEl.removeEventListener("pointerdown", down);
+    };
+  }, []);
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || drag.current) return;
+    // Working with objects ends a text selection.
+    clearTextSelection();
     const p = userAt(e);
     const editor = useEditorStore.getState();
     // A click outside the text being typed commits it (D33) and does nothing else.
@@ -244,8 +294,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (!d) {
-      if (tool === "select") setHover(!!hitTest(page.objects, userAt(e), HIT_TOLERANCE_PX / scale));
-      else if (tool === "signature") setGhostAt(clampPoint(userAt(e), page.box));
+      if (tool === "signature") setGhostAt(clampPoint(userAt(e), page.box));
       return;
     }
     if (e.pointerId !== d.pointerId) return;
@@ -282,13 +331,15 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     : shown;
   const selectedObject = selectedId ? objects.find((o) => o.id === selectedId) : undefined;
 
+  const passThrough = tool === "select" && !editing && !dragKind && !hover;
   const cursor = tool === "text" ? "text" : tool !== "select" ? "crosshair" : hover || dragKind === "move" ? "move" : "default";
 
   return (
     <div
       ref={layerRef}
       className="absolute inset-0 touch-none"
-      style={{ cursor }}
+      style={{ cursor, pointerEvents: passThrough ? "none" : undefined }}
+      data-pass-through={passThrough ? "1" : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

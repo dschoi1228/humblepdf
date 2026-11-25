@@ -184,7 +184,7 @@ export const en: Strings = {
       print: "Print",
       undo: "Undo",
       redo: "Redo",
-      copy: "Copy object",
+      copy: "Copy (selected page text or object)",
       paste: "Paste object",
       duplicate: "Duplicate object",
       deleteObject: "Delete the selected object",

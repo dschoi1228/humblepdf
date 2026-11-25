@@ -23,6 +23,8 @@ import { renderLook, renderPageCanvas } from "../viewer/pageRenderer";
 import { PRIORITY, scheduler } from "../viewer/renderScheduler";
 import { markMainRendered } from "../viewer/testHooks";
 import { getPageBitmap, putPageBitmap } from "../viewer/pageBitmapCache";
+import { installTextSelection, renderTextLayer, setTextLayerScale, TEXT_LAYER_CLASS } from "../viewer/textLayer";
+import { loadSource } from "../viewer/sourceCache";
 
 /** Pages mounted above and below the visible range. */
 const OVERSCAN = 2;
@@ -45,7 +47,10 @@ const PageSlot = memo(function PageSlot(props: {
   const t = useStrings();
   const { page, meta, scale, priority } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  /** The canvas has shown a bitmap once: the text layer waits for it (first paint first). */
+  const [painted, setPainted] = useState(false);
   const key = `main:${page.id}`;
   const look = renderLook(page);
   // Object edits change `page` but not its pixels: the render effect reads the latest page
@@ -70,6 +75,7 @@ const PageSlot = memo(function PageSlot(props: {
     target.getContext("2d")!.drawImage(c, 0, 0);
     shown.current = l;
     target.dataset.hasPixels = "1";
+    setPainted(true);
   }, []);
 
   // Before the first paint: a remounted page shows its last bitmap (no blank flash), and a
@@ -118,6 +124,34 @@ const PageSlot = memo(function PageSlot(props: {
   }, [key, sourcePage, meta, scale, look, show]);
 
   useEffect(() => scheduler.reprioritize(key, priority), [key, priority]);
+
+  // Selectable text (M12, D47): PDF pages only, built once per source page and rotation;
+  // a zoom only changes the CSS scale it is laid out with.
+  const rotation = displayRotation(page.baseRotation, page.userRotation);
+  const scaleRef = useRef(scale);
+  useLayoutEffect(() => {
+    scaleRef.current = scale;
+    if (textRef.current) setTextLayerScale(textRef.current, scale);
+  }, [scale]);
+  useEffect(() => {
+    const div = textRef.current;
+    if (!div || !painted || meta.info.kind !== "pdf") return;
+    const ac = new AbortController();
+    void (async () => {
+      const src = await loadSource(meta);
+      if (ac.signal.aborted || src.kind !== "pdf") return;
+      const pdfPage = await src.doc.getPage(pageRef.current.pageIndex + 1);
+      if (ac.signal.aborted) return;
+      await renderTextLayer(div, pdfPage, scaleRef.current, rotation, ac.signal);
+      if (!ac.signal.aborted) div.dataset.ready = "1";
+    })().catch(() => {
+      // No text layer: the page still shows; only selection is unavailable.
+    });
+    return () => {
+      ac.abort();
+      delete div.dataset.ready;
+    };
+  }, [sourcePage, meta, rotation, painted]);
   useEffect(() => () => markMainRendered(page.id, false), [page.id]);
 
 
@@ -129,6 +163,7 @@ const PageSlot = memo(function PageSlot(props: {
       data-testid="page"
     >
       <canvas ref={canvasRef} className="block size-full" />
+      {meta.info.kind === "pdf" && <div ref={textRef} className={TEXT_LAYER_CLASS} data-testid="text-layer" />}
       <ObjectLayer page={page} transform={transform} />
       {failed && (
         <div className="absolute inset-0 grid place-items-center text-sm text-destructive">{t.pageFailed}</div>
@@ -145,6 +180,7 @@ export function PageView() {
   const goTo = useViewStore((s) => s.goTo);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState<Viewport>({ top: 0, left: 0, width: 0, height: 0 });
+  useEffect(installTextSelection, []);
 
   const sizes = useMemo(() => doc.pages.map(pageDisplaySize), [doc.pages]);
   const layout = useMemo(() => computeLayout(sizes, () => scale), [sizes, scale]);
@@ -271,7 +307,7 @@ export function PageView() {
     <div
       ref={scrollRef}
       onScroll={readViewport}
-      className="relative h-full overflow-auto bg-neutral-200"
+      className="relative h-full overflow-auto bg-neutral-200 select-none"
       data-testid="page-view"
       data-scale={scale}
     >

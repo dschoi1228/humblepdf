@@ -185,7 +185,7 @@ export const ja: Strings = {
       print: "印刷",
       undo: "元に戻す",
       redo: "やり直し",
-      copy: "オブジェクトをコピー",
+      copy: "コピー（選択した本文テキストまたはオブジェクト）",
       paste: "オブジェクトを貼り付け",
       duplicate: "オブジェクトを複製",
       deleteObject: "選択したオブジェクトを削除",

@@ -183,7 +183,7 @@ export const ko = {
       print: "인쇄",
       undo: "실행 취소",
       redo: "다시 실행",
-      copy: "객체 복사",
+      copy: "복사 (선택한 본문 텍스트 또는 객체)",
       paste: "객체 붙여넣기",
       duplicate: "객체 복제",
       deleteObject: "선택한 객체 삭제",
