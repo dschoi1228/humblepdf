@@ -145,6 +145,8 @@ export const ja: Strings = {
     strength: "強さ",
     strengthHint: "紙や影が残るときは強く、文字が薄くなるときは弱くしてください。",
     preview: "プレビュー",
+    previewActual: "実寸で表示",
+    previewFit: "合わせて表示",
     drawHint: "下の枠にマウスやペンで署名してください。",
     ink: "インク",
     inkBlack: "黒",

@@ -143,6 +143,8 @@ export const ko = {
     strength: "지우기 강도",
     strengthHint: "종이나 그림자가 남으면 강도를 높이고, 글씨가 흐려지면 낮추세요.",
     preview: "미리보기",
+    previewActual: "실제 크기로 보기",
+    previewFit: "맞춰 보기",
     drawHint: "아래 칸에 마우스나 펜으로 서명하세요.",
     ink: "잉크 색",
     inkBlack: "검정",

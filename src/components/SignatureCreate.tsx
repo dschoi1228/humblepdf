@@ -1,6 +1,8 @@
 // Creating signatures in the library dialog (SPEC 6.8, D44): adding an image with an optional
-// white background removal (strength slider, preview made by the core), and drawing one.
+// white background removal (strength slider, preview made by the core and cropped to the
+// ink, viewable at its own pixel size), and drawing one.
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { Shrink, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { backend } from "../backend";
@@ -59,6 +61,7 @@ export function SignatureImport(props: {
   const [strength, setStrength] = useState(DEFAULT_STRENGTH);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [actual, setActual] = useState(false); // preview at its own pixel size, scrollable
   const request = useRef(0);
 
   // First look: the image as is decides the switch's default (on unless it is transparent).
@@ -119,8 +122,32 @@ export function SignatureImport(props: {
         void save();
       }}
     >
-      <div className="flex h-40 items-center justify-center rounded-md border border-neutral-200 p-2" style={CHECKER}>
-        {url && <img src={url} alt={t.signatures.preview} className="max-h-full max-w-full object-contain" data-testid="signature-import-preview" />}
+      <div className="relative">
+        <div
+          className={`flex h-56 rounded-md border border-neutral-200 p-2 ${actual ? "overflow-auto" : "items-center justify-center"}`}
+          style={CHECKER}
+        >
+          {url && (
+            <img
+              src={url}
+              alt={t.signatures.preview}
+              className={actual ? "m-auto max-w-none" : "max-h-full max-w-full object-contain"}
+              data-testid="signature-import-preview"
+            />
+          )}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="absolute right-2 bottom-2 shadow-sm"
+          aria-pressed={actual}
+          onClick={() => setActual((a) => !a)}
+          data-testid="signature-preview-zoom"
+        >
+          {actual ? <Shrink /> : <ZoomIn />}
+          {actual ? t.signatures.previewFit : t.signatures.previewActual}
+        </Button>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input

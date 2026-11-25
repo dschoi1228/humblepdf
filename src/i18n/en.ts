@@ -144,6 +144,8 @@ export const en: Strings = {
     strength: "Strength",
     strengthHint: "Raise it if paper or shadows remain; lower it if the writing fades.",
     preview: "Preview",
+    previewActual: "Actual size",
+    previewFit: "Fit",
     drawHint: "Sign in the box below with a mouse or pen.",
     ink: "Ink",
     inkBlack: "Black",

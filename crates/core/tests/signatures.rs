@@ -347,8 +347,53 @@ fn normalize_with_removes_white_and_limits_the_preview_size() {
         max_side: 100,
     };
     let preview = normalize_with(&jpeg, &opts).unwrap();
-    assert_eq!((preview.width, preview.height), (100, 50));
+    // Cropped to the ink (x 95..=106, y 20..80) with a 4 px margin; already under 100 px.
+    assert_eq!((preview.width, preview.height), (20, 68));
     let decoded = image::load_from_memory(&preview.png).unwrap().to_rgba8();
-    assert_eq!(alpha(&decoded, (10, 5)), 0, "paper is transparent");
-    assert_eq!(alpha(&decoded, (50, 25)), 255, "ink is opaque");
+    assert_eq!(alpha(&decoded, (1, 1)), 0, "the margin is transparent");
+    assert_eq!(alpha(&decoded, (8, 34)), 255, "ink is opaque");
+}
+
+#[test]
+fn white_removal_crops_to_the_ink_and_previews_match_the_stored_image() {
+    use humblepdf_core::signature::crop_to_ink;
+    // A small signature on a big sheet: 1000 x 600 paper, ink in a 100 x 40 box.
+    let sheet = image::RgbaImage::from_fn(1000, 600, |x, y| {
+        let ink = (400..500).contains(&x) && (300..340).contains(&y);
+        let v = if ink { 30 } else { 220 + ((x + y) % 5) as u8 };
+        image::Rgba([v, v, v, 255])
+    });
+    let mut png = Vec::new();
+    image::DynamicImage::ImageRgba8(sheet)
+        .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
+        .unwrap();
+    let stored = normalize_with(
+        &png,
+        &NormalizeOptions {
+            remove_white: Some(50),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    // Margin: 2 % of 1000 = 20 px on each side.
+    assert_eq!((stored.width, stored.height), (140, 80));
+    let preview = normalize_with(
+        &png,
+        &NormalizeOptions {
+            remove_white: Some(50),
+            max_side: 70,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        (preview.width, preview.height),
+        (70, 40),
+        "the stored image made smaller"
+    );
+
+    // Without removal nothing is cropped; an image without ink is kept whole.
+    let plain = normalize_with(&png, &NormalizeOptions::default()).unwrap();
+    assert_eq!((plain.width, plain.height), (1000, 600));
+    let empty = image::RgbaImage::new(30, 20);
+    assert_eq!(crop_to_ink(empty).dimensions(), (30, 20));
 }

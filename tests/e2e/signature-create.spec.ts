@@ -66,6 +66,15 @@ test("a photographed signature: white removal with strength, previewed and store
   await slider.fill("100");
   await expect.poll(async () => (await pixel(preview, ...SHADOW))[3]).toBe(0);
   await slider.fill("70");
+
+  // The preview can be seen at its own pixel size (scrollable) and back.
+  const zoom = panel.getByTestId("signature-preview-zoom");
+  await zoom.click();
+  await expect(zoom).toHaveAttribute("aria-pressed", "true");
+  const [shown, natural] = await preview.evaluate((el) => [el.getBoundingClientRect().width, (el as HTMLImageElement).naturalWidth]);
+  expect(Math.abs(shown - natural)).toBeLessThan(1);
+  await zoom.click();
+  await expect(zoom).toHaveAttribute("aria-pressed", "false");
   await expect(panel.getByTestId("signature-import-name")).toHaveValue("sig-white");
   await panel.getByTestId("signature-import-save").click();
   await expect(page.getByText('"sig-white" 서명을 추가했습니다.')).toBeVisible();
@@ -77,7 +86,9 @@ test("a photographed signature: white removal with strength, previewed and store
   expect((await pixel(stored, ...CORNER))[3]).toBe(0);
   expect((await pixel(stored, ...SHADOW))[3]).toBe(0);
   const size = await stored.evaluate((el) => [(el as HTMLImageElement).naturalWidth, (el as HTMLImageElement).naturalHeight]);
-  expect(size).toEqual([600, 200]);
+  // Cropped to the ink: the paper above and below the signature is gone.
+  expect(size[0]).toBeLessThanOrEqual(600);
+  expect(size[1]).toBeLessThan(180);
 
   expect(w.external).toEqual([]);
   expect(w.consoleProblems).toEqual([]);

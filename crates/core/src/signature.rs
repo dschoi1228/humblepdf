@@ -1,7 +1,8 @@
 //! Signature images (SPEC 6.8). Images are normalized when they are added to the signature
 //! library: EXIF orientation applied, the long side reduced to `MAX_SIDE`, and stored as an
 //! 8-bit RGBA PNG so transparency is kept. The white background of a photographed or scanned
-//! signature can be made transparent on the way in (SPEC 6.8, D44).
+//! signature can be made transparent on the way in, and the image is then cropped to the ink
+//! (SPEC 6.8, D44).
 
 use std::io::Cursor;
 
@@ -81,17 +82,17 @@ pub fn normalize_with(bytes: &[u8], options: &NormalizeOptions) -> Result<Normal
     if w == 0 || h == 0 {
         return Err(invalid("empty image"));
     }
-    if w.max(h) > max_side {
-        let scale = f64::from(max_side) / f64::from(w.max(h));
-        let nw = ((f64::from(w) * scale).round() as u32).clamp(1, max_side);
-        let nh = ((f64::from(h) * scale).round() as u32).clamp(1, max_side);
-        img = img.resize_exact(nw, nh, FilterType::Lanczos3);
-    }
-    let mut pixels = img.to_rgba8();
-    if let Some(strength) = options.remove_white {
-        remove_white(&mut pixels, strength);
-    }
-    let rgba = DynamicImage::ImageRgba8(pixels);
+    let rgba = match options.remove_white {
+        None => fit(img, max_side),
+        Some(strength) => {
+            // Removal works at the stored size so a preview is the stored image made
+            // smaller; the result is cropped to the ink before it is fitted to `max_side`.
+            let mut pixels = fit(img, MAX_SIDE).to_rgba8();
+            remove_white(&mut pixels, strength);
+            fit(DynamicImage::ImageRgba8(crop_to_ink(pixels)), max_side)
+        }
+    };
+    let rgba = DynamicImage::ImageRgba8(rgba.to_rgba8());
     let mut png = Vec::new();
     rgba.write_to(&mut Cursor::new(&mut png), ImageFormat::Png)
         .map_err(invalid)?;
@@ -100,6 +101,47 @@ pub fn normalize_with(bytes: &[u8], options: &NormalizeOptions) -> Result<Normal
         width: rgba.width(),
         height: rgba.height(),
     })
+}
+
+/// Reduces an image so its longest side is at most `max_side`.
+fn fit(img: DynamicImage, max_side: u32) -> DynamicImage {
+    let (w, h) = (img.width(), img.height());
+    if w.max(h) <= max_side {
+        return img;
+    }
+    let scale = f64::from(max_side) / f64::from(w.max(h));
+    let nw = ((f64::from(w) * scale).round() as u32).clamp(1, max_side);
+    let nh = ((f64::from(h) * scale).round() as u32).clamp(1, max_side);
+    img.resize_exact(nw, nh, FilterType::Lanczos3)
+}
+
+/// Crops an image to the pixels at least this opaque, plus a margin, after white removal:
+/// a signature photographed on a large sheet is stored (and placed) without the empty
+/// paper around it. Faint leftovers of the paper below this alpha do not count.
+const CROP_ALPHA: u8 = 32;
+/// Margin around the ink: this share of the longest side, at least `CROP_MIN_MARGIN` px.
+const CROP_MARGIN: f32 = 0.02;
+const CROP_MIN_MARGIN: u32 = 4;
+
+/// Crops to the ink with a margin (D44). An image without ink is kept as it is.
+pub fn crop_to_ink(img: RgbaImage) -> RgbaImage {
+    let (w, h) = img.dimensions();
+    let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
+    for (x, y, p) in img.enumerate_pixels() {
+        if p[3] >= CROP_ALPHA {
+            x0 = x0.min(x);
+            y0 = y0.min(y);
+            x1 = x1.max(x);
+            y1 = y1.max(y);
+        }
+    }
+    if x0 > x1 {
+        return img;
+    }
+    let margin = ((w.max(h) as f32 * CROP_MARGIN).round() as u32).max(CROP_MIN_MARGIN);
+    let (x0, y0) = (x0.saturating_sub(margin), y0.saturating_sub(margin));
+    let (x1, y1) = ((x1 + margin).min(w - 1), (y1 + margin).min(h - 1));
+    image::imageops::crop_imm(&img, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image()
 }
 
 fn luma(p: &image::Rgba<u8>) -> f32 {
