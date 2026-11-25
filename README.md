@@ -47,6 +47,7 @@ Delete those folders to remove everything the app has stored.
 - Continuous scrolling viewer with thumbnails and zoom from 25% to 400%
 - Select page text with the mouse (drag, double-click for a word, triple-click for a line)
   and copy it with **Ctrl+C**
+- Find text in the document with **Ctrl+F** (**Enter**/**F3** for the next match)
 - Reorder pages by dragging thumbnails, select multiple pages, delete and rotate them, and
   choose how image pages fit (A4 or image size)
 - Export only the selected pages to a new PDF
