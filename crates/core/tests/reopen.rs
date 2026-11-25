@@ -29,10 +29,17 @@ fn objects_for(i: usize, p: &humblepdf_core::model::Page) -> Vec<PageObject> {
         at(40.0, 100.0),
         at(240.0, 100.0),
     ];
+    // One quad per line, as a highlight over page text has (M13).
+    let second: Quad = [
+        at(40.0, 95.0),
+        at(180.0, 95.0),
+        at(40.0, 75.0),
+        at(180.0, 75.0),
+    ];
     vec![
         PageObject::Highlight(Highlight {
             id: format!("h{i}"),
-            quads: vec![quad],
+            quads: vec![quad, second],
             color: [1.0, 0.92, 0.23],
             opacity: 0.4,
         }),

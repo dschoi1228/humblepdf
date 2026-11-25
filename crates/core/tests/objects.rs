@@ -34,10 +34,12 @@ fn objects_for(page: usize, b: &Rect) -> Vec<PageObject> {
         p(40.0, 100.0),
         p(240.0, 100.0),
     ];
+    // A second, shorter line below it: highlights over page text have one quad per line (M13).
+    let second: Quad = [p(40.0, 95.0), p(180.0, 95.0), p(40.0, 75.0), p(180.0, 75.0)];
     vec![
         PageObject::Highlight(Highlight {
             id: format!("h{page}"),
-            quads: vec![quad],
+            quads: vec![quad, second],
             color: YELLOW,
             opacity: 0.4,
         }),
@@ -191,11 +193,14 @@ fn objects_on_rotated_and_image_pages_are_standard_annotations() {
             match obj {
                 PageObject::Highlight(h) => {
                     assert_eq!(subtype, b"Highlight", "{what}");
-                    let qp: Vec<f64> = h.quads[0].iter().flat_map(|p| [p.x, p.y]).collect();
+                    // Eight numbers per quad, in order; /Rect covers them all.
+                    let qp: Vec<f64> = h.quads.iter().flatten().flat_map(|p| [p.x, p.y]).collect();
+                    assert_eq!(qp.len(), 8 * h.quads.len(), "{what}");
                     assert!(close(&nums(a, b"QuadPoints"), &qp), "{what}");
                     assert!(close(&nums(a, b"C"), &h.color), "{what}");
                     assert!((num(a, b"CA") - h.opacity).abs() < 1e-3, "{what}");
-                    let g = Rect::from_points(&h.quads[0]).unwrap();
+                    let all: Vec<Point> = h.quads.iter().flatten().copied().collect();
+                    let g = Rect::from_points(&all).unwrap();
                     check_rect(a, &g, 0.0, &what);
                 }
                 PageObject::Rect(s) | PageObject::Ellipse(s) => {
