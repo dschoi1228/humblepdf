@@ -37,9 +37,14 @@ test("tool properties, thumbnail panel and zoom mode are remembered", async ({ p
 test("F1 opens the shortcut help; the toolbar opens About", async ({ page }) => {
   const w = watch(page);
   await page.goto("/");
-  await page.keyboard.press("F1");
+  // The app is mounted (its key handler too) once the toolbar is there.
+  await expect(page.getByTestId("open-help")).toBeVisible();
   const help = page.getByTestId("help-dialog");
-  await expect(help).toBeVisible();
+  // A press that lands before the key handler is installed is retried.
+  await expect(async () => {
+    await page.keyboard.press("F1");
+    await expect(help).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await expect(help.getByTestId("help-row").first()).toBeVisible();
   await expect(help.getByText("객체 복제")).toBeVisible();
   await expect(help.getByText("Ctrl+D")).toBeVisible();
