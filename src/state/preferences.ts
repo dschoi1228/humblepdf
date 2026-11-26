@@ -1,12 +1,14 @@
 // Recent settings kept between runs (SPEC M7, D38): the properties of each tool, the
-// thumbnail panel and the zoom mode. Stored in WebView localStorage like the UI language
-// (D27). No document or signature data. Values are checked on read; anything malformed
-// falls back to the defaults.
+// thumbnail panel, the zoom mode and the remembered width of each signature (M15, D50).
+// Stored in WebView localStorage like the UI language (D27). No document or signature
+// data: signatures appear only by their random library id. Values are checked on read;
+// anything malformed falls back to the defaults.
 import { DEFAULT_PROPS, OPACITIES, type Rgb, type ToolProps } from "../editor/tools";
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from "../editor/textLayout";
 import { MAX_STROKE_WIDTH, MIN_STROKE_WIDTH } from "../shapes/spec";
 import type { ZoomMode } from "./viewStore";
 import { MAX_SCALE, MIN_SCALE } from "../viewer/layout";
+import { MIN_SIZE } from "../editor/geometry";
 
 export const PREFERENCES_KEY = "humblepdf.preferences.v1";
 
@@ -16,13 +18,21 @@ export type Preferences = {
   zoomMode: ZoomMode;
   /** Scale of the custom zoom mode. */
   scale: number;
+  /** Upright width (pt) each library signature was last resized to (D50). */
+  signatureWidths: Record<string, number>;
 };
+
+/** Largest page side PDF allows (pt); a remembered width beyond it is malformed. */
+export const MAX_SIGNATURE_WIDTH = 14400;
+/** Remembered widths kept; the oldest go first. */
+export const MAX_SIGNATURE_WIDTHS = 50;
 
 export const DEFAULT_PREFERENCES: Preferences = {
   toolProps: DEFAULT_PROPS,
   thumbnailsOpen: true,
   zoomMode: "fitWidth",
   scale: 1,
+  signatureWidths: {},
 };
 
 type Raw = Record<string, unknown>;
@@ -60,6 +70,13 @@ function toolPropsFrom<T extends keyof ToolProps>(tool: T, raw: unknown): ToolPr
   }
 }
 
+/** Valid entries of a stored width map, newest last, at most MAX_SIGNATURE_WIDTHS. */
+export function signatureWidthsFrom(raw: unknown): Record<string, number> {
+  if (!isObj(raw)) return {};
+  const ok = Object.entries(raw).filter(([id, w]) => id.length > 0 && id.length <= 128 && inRange(w, MIN_SIZE, MAX_SIGNATURE_WIDTH));
+  return Object.fromEntries(ok.slice(-MAX_SIGNATURE_WIDTHS)) as Record<string, number>;
+}
+
 /** Preferences from their stored text; defaults for whatever is missing or invalid. */
 export function parsePreferences(text: string | null): Preferences {
   let raw: unknown;
@@ -79,6 +96,7 @@ export function parsePreferences(text: string | null): Preferences {
     thumbnailsOpen: typeof raw.thumbnailsOpen === "boolean" ? raw.thumbnailsOpen : true,
     zoomMode,
     scale: inRange(raw.scale, MIN_SCALE, MAX_SCALE) ? raw.scale : 1,
+    signatureWidths: signatureWidthsFrom(raw.signatureWidths),
   };
 }
 

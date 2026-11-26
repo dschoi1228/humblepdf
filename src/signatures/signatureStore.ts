@@ -1,10 +1,12 @@
 // Signature library state in the frontend (SPEC 6.8, D30, D31): the list from the backend,
-// the signature the signature tool places, and blob URLs of the stored PNGs for drawing.
+// the signature the signature tool places, blob URLs of the stored PNGs for drawing, and
+// the width each signature was last resized to (M15, D50; kept by preferencesSync).
 import { create } from "zustand";
 import { backend } from "../backend";
 import type { BackendError, PickedFile, SignatureMeta } from "../backend/types";
 import { useDocumentStore } from "../state/documentStore";
 import { signaturePages } from "./usage";
+import { MAX_SIGNATURE_WIDTHS } from "../state/preferences";
 
 type State = {
   list: SignatureMeta[];
@@ -15,6 +17,8 @@ type State = {
   /** Signatures whose image could not be loaded (deleted from the library). */
   failed: Record<string, true>;
   dialogOpen: boolean;
+  /** Upright width (pt) a signature is placed at; 20% of the page when absent (D50). */
+  widths: Record<string, number>;
 
   load: () => Promise<void>;
   /** Adds an image file, removing its white background unless `removeWhite` is null (D44). */
@@ -27,6 +31,8 @@ type State = {
   setCurrent: (id: string) => void;
   openDialog: () => void;
   closeDialog: () => void;
+  /** Remembers the width `id` was resized to, for the next placements. */
+  rememberWidth: (id: string, width: number) => void;
   /** Starts loading the image of `id` once. */
   ensureUrl: (id: string) => void;
 };
@@ -42,10 +48,17 @@ export const useSignatureStore = create<State>((set, get) => ({
   urls: {},
   failed: {},
   dialogOpen: false,
+  widths: {},
 
   load: async () => {
     const list = await backend.signatureList();
-    set((s) => ({ list, loaded: true, current: s.current && list.some((x) => x.id === s.current) ? s.current : (list[0]?.id ?? null) }));
+    set((s) => ({
+      list,
+      loaded: true,
+      current: s.current && list.some((x) => x.id === s.current) ? s.current : (list[0]?.id ?? null),
+      // Forget signatures that left the library while the app was closed.
+      widths: Object.fromEntries(Object.entries(s.widths).filter(([id]) => list.some((x) => x.id === id))),
+    }));
   },
   add: async (file, name, removeWhite = null) => {
     const meta = await backend.signatureAdd(file, name, removeWhite);
@@ -71,12 +84,21 @@ export const useSignatureStore = create<State>((set, get) => ({
       const list = s.list.filter((x) => x.id !== id);
       const urls = { ...s.urls };
       delete urls[id];
-      return { list, urls, current: s.current === id ? (list[0]?.id ?? null) : s.current };
+      const widths = { ...s.widths };
+      delete widths[id];
+      return { list, urls, widths, current: s.current === id ? (list[0]?.id ?? null) : s.current };
     });
   },
   setCurrent: (current) => set({ current }),
   openDialog: () => set({ dialogOpen: true }),
   closeDialog: () => set({ dialogOpen: false }),
+  rememberWidth: (id, width) =>
+    set((s) => {
+      if (s.widths[id] === width) return s;
+      // Re-insert so the newest entry is last; drop the oldest past the limit.
+      const rest = Object.entries(s.widths).filter(([k]) => k !== id);
+      return { widths: Object.fromEntries([...rest, [id, width]].slice(-MAX_SIGNATURE_WIDTHS)) };
+    }),
   ensureUrl: (id) => {
     const s = get();
     if (s.urls[id] || s.failed[id] || loading.has(id)) return;

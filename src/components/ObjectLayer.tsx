@@ -29,6 +29,7 @@ import {
   parseHandle,
   newSignature,
   resizeObject,
+  signatureWidth,
   type Handle,
 } from "../editor/geometry";
 import type { DrawTool } from "../editor/tools";
@@ -121,6 +122,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
   /** Pointer position (user space) while the signature tool shows its preview. */
   const [ghostAt, setGhostAt] = useState<Point | null>(null);
   const lib = useSignatureStore((s) => (tool === "signature" ? s.list.find((x) => x.id === s.current) : undefined));
+  const libWidth = useSignatureStore((s) => (lib ? s.widths[lib.id] : undefined));
   const [dragKind, setDragKind] = useState<Drag["kind"] | "text" | null>(null);
   const anyDragging = useEditorStore((s) => s.dragging);
   const editing = useEditorStore((s) => (s.editing?.pageId === page.id ? s.editing : null));
@@ -277,6 +279,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
         signatureId: sig.id,
         at: clampPoint(p, page.box),
         aspect: sig.width / sig.height,
+        width: lib.widths[sig.id],
         box: page.box,
         axes: screenAxes(transform),
         rotation: displayRotation(page.baseRotation, page.userRotation),
@@ -341,7 +344,11 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
     end();
     if (!result) return;
     if (d.kind === "create") commitNewObject(page.id, result, d.tool);
-    else if (result !== d.orig) commitObject(page.id, result);
+    else if (result !== d.orig) {
+      commitObject(page.id, result);
+      // The next placements of this signature use the size it was resized to (D50).
+      if (d.kind === "resize" && result.type === "signature") useSignatureStore.getState().rememberWidth(result.signatureId, signatureWidth(result));
+    }
   };
 
   // While dragging, the draft replaces its original (move, resize) or is added (create).
@@ -409,6 +416,7 @@ export const ObjectLayer = memo(function ObjectLayer(props: { page: Page; transf
               signatureId: lib.id,
               at: ghostAt,
               aspect: lib.width / lib.height,
+              width: libWidth,
               box: page.box,
               axes: screenAxes(transform),
               rotation: displayRotation(page.baseRotation, page.userRotation),

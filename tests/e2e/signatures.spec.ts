@@ -153,13 +153,13 @@ test("placing on pages shown at 0 and 90 degrees, resizing with the ratio kept, 
     await click(page, index, at);
     const [s] = await signatures(page, index);
     expect(s.rotation).toBe(rotation);
-    // 25% of the page width on screen; upright on screen, so the user-space box is
+    // 20% of the page width on screen (D50); upright on screen, so the user-space box is
     // turned at 90 degrees.
     const sideways = rotation === 90 || rotation === 270;
     const screenW = sideways ? h(s) : w(s);
     const screenH = sideways ? w(s) : h(s);
     const pageScreenW = sideways ? p.box.y1 - p.box.y0 : p.box.x1 - p.box.x0;
-    expect(screenW).toBeCloseTo(pageScreenW * 0.25, 6);
+    expect(screenW).toBeCloseTo(pageScreenW * 0.2, 6);
     expect(screenW / screenH).toBeCloseTo(iw / ih, 6);
     expect(Math.abs((s.rect.x0 + s.rect.x1) / 2 - at.x)).toBeLessThan(tol);
     // The tool stays, and the chosen signature follows the pointer as a preview (D31).
@@ -214,6 +214,104 @@ test("placing on pages shown at 0 and 90 degrees, resizing with the ratio kept, 
   expect(await signatures(page, 0)).toHaveLength(1);
   await page.keyboard.press("Control+z");
   expect(await signatures(page, 0)).toHaveLength(2);
+
+  expect(w_.external).toEqual([]);
+  expect(w_.consoleProblems).toEqual([]);
+});
+
+test("a resized signature is placed at that size next time, also after a restart (D50)", async ({ page }) => {
+  const w_ = watch(page);
+  const url = `/?open=${fixtureUrl("rotated.pdf")}&signatures=${SIG},${SIG}`;
+  await page.goto(url);
+  await waitForRenders(page);
+  await page.getByTestId("fit-page").click();
+  await waitForIdle(page);
+  const stored = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem("humblepdf.preferences.v1") ?? "{}").signatureWidths ?? {});
+  const upright = (s: Sig) => (s.rotation === 90 || s.rotation === 270 ? h(s) : w(s));
+  const scale = await page.evaluate(() => window.__viewer!.view().scale);
+  const p0 = (await model(page)).pages[0];
+  const mid0 = { x: (p0.box.x0 + p0.box.x1) / 2, y: (p0.box.y0 + p0.box.y1) / 2 };
+  const choices = page.getByTestId("signature-choice");
+
+  // Place, then shrink it with a corner handle.
+  await page.keyboard.press("KeyS");
+  const firstId = (await choices.first().getAttribute("data-signature-id"))!;
+  await click(page, 0, mid0);
+  await page.keyboard.press("Escape");
+  const [placed] = await signatures(page, 0);
+  expect(upright(placed)).toBeCloseTo((p0.box.x1 - p0.box.x0) * 0.2, 6);
+  await click(page, 0, mid0);
+  const hb = (await page.locator('[data-testid=handle][data-handle="1,1"]').boundingBox())!;
+  const to = await client(page, 0, { x: placed.rect.x0 + w(placed) * 0.6, y: placed.rect.y0 + h(placed) * 0.6 });
+  await drag(page, { x: hb.x + hb.width / 2, y: hb.y + hb.height / 2 }, to);
+  const [small] = await signatures(page, 0);
+  const W = upright(small);
+  expect(W).toBeLessThan(upright(placed) * 0.8);
+  // Undo takes the document back but keeps the remembered size.
+  await page.keyboard.press("Control+z");
+  expect(upright((await signatures(page, 0))[0])).toBeCloseTo(upright(placed), 6);
+  await page.keyboard.press("Escape");
+
+  // The preview and the next placement use it, also on a page shown at 90 degrees.
+  await page.keyboard.press("KeyS");
+  const c = await client(page, 0, { x: mid0.x, y: p0.box.y0 + 100 });
+  await page.mouse.move(c.x, c.y);
+  const ghost = page.locator('[data-testid=page][data-page-index="0"] [data-testid=signature-ghost] [data-object-type=signature] image');
+  await expect(ghost).toHaveCount(1);
+  expect(Math.abs((await ghost.boundingBox())!.width - W * scale)).toBeLessThan(1.5);
+  await showPage(page, 1);
+  const p1 = (await model(page)).pages[1];
+  expect((p1.baseRotation + p1.userRotation) % 180).toBe(90);
+  await click(page, 1, { x: (p1.box.x0 + p1.box.x1) / 2, y: (p1.box.y0 + p1.box.y1) / 2 });
+  const [onRotated] = await signatures(page, 1);
+  expect(onRotated.rotation % 180).toBe(90);
+  expect(upright(onRotated)).toBeCloseTo(W, 6);
+
+  // Another library signature keeps the default size, and only the resized one is stored.
+  await choices.nth(1).click();
+  const secondId = (await choices.nth(1).getAttribute("data-signature-id"))!;
+  await showPage(page, 0);
+  await click(page, 0, { x: mid0.x, y: p0.box.y0 + 100 });
+  const other = (await signatures(page, 0)).find((s) => s.signatureId === secondId)!;
+  expect(upright(other)).toBeCloseTo((p0.box.x1 - p0.box.x0) * 0.2, 6);
+  await page.keyboard.press("Escape");
+  await expect.poll(stored).toEqual({ [firstId]: W });
+
+  // A moved signature does not change it.
+  const oc = await client(page, 0, { x: (other.rect.x0 + other.rect.x1) / 2, y: (other.rect.y0 + other.rect.y1) / 2 });
+  await drag(page, oc, { x: oc.x + 30, y: oc.y + 30 });
+  await page.waitForTimeout(500);
+  expect(await stored()).toEqual({ [firstId]: W });
+
+  // Deleting a signature from the library forgets its size: remember the second one, take
+  // it off the page, then delete it.
+  await click(page, 0, { x: (other.rect.x0 + other.rect.x1) / 2, y: (other.rect.y0 + other.rect.y1) / 2 });
+  const moved = (await signatures(page, 0)).find((s) => s.signatureId === secondId)!;
+  await click(page, 0, { x: (moved.rect.x0 + moved.rect.x1) / 2, y: (moved.rect.y0 + moved.rect.y1) / 2 });
+  const hb2 = (await page.locator('[data-testid=handle][data-handle="1,1"]').boundingBox())!;
+  const to2 = await client(page, 0, { x: moved.rect.x0 + w(moved) * 0.5, y: moved.rect.y0 + h(moved) * 0.5 });
+  await drag(page, { x: hb2.x + hb2.width / 2, y: hb2.y + hb2.height / 2 }, to2);
+  await expect.poll(async () => Object.keys(await stored()).sort()).toEqual([firstId, secondId].sort());
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("KeyS");
+  await page.getByTestId("manage-signatures").click();
+  const row = page.getByTestId("signature-dialog").getByTestId("signature-row").nth(1);
+  await row.getByTestId("signature-delete").click();
+  await row.getByTestId("signature-delete-confirm").click();
+  await expect(page.getByTestId("signature-dialog").getByTestId("signature-row")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect.poll(stored).toEqual({ [firstId]: W });
+
+  // After a restart the first signature is still placed at its size.
+  await page.goto(url);
+  await waitForRenders(page);
+  await waitForIdle(page);
+  await page.keyboard.press("KeyS");
+  expect(await choices.first().getAttribute("data-signature-id")).toBe(firstId);
+  await click(page, 0, mid0);
+  const [again] = await signatures(page, 0);
+  expect(upright(again)).toBeCloseTo(W, 6);
 
   expect(w_.external).toEqual([]);
   expect(w_.consoleProblems).toEqual([]);

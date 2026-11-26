@@ -2,6 +2,7 @@
 import { useEditorStore } from "../editor/editorStore";
 import { loadPreferences, savePreferences } from "../state/preferences";
 import { useViewStore } from "../state/viewStore";
+import { useSignatureStore } from "../signatures/signatureStore";
 
 let started = false;
 
@@ -10,6 +11,7 @@ export function startPreferenceSync(): void {
   started = true;
   const p = loadPreferences();
   useEditorStore.setState({ props: p.toolProps });
+  useSignatureStore.setState({ widths: p.signatureWidths });
   useViewStore.setState({
     thumbnailsOpen: p.thumbnailsOpen,
     zoomMode: p.zoomMode,
@@ -23,11 +25,20 @@ export function startPreferenceSync(): void {
     timer = setTimeout(() => {
       const e = useEditorStore.getState();
       const v = useViewStore.getState();
-      savePreferences({ toolProps: e.props, thumbnailsOpen: v.thumbnailsOpen, zoomMode: v.zoomMode, scale: v.scale });
+      savePreferences({
+        toolProps: e.props,
+        thumbnailsOpen: v.thumbnailsOpen,
+        zoomMode: v.zoomMode,
+        scale: v.scale,
+        signatureWidths: useSignatureStore.getState().widths,
+      });
     }, 300);
   };
   useEditorStore.subscribe((s, prev) => {
     if (s.props !== prev.props) save();
+  });
+  useSignatureStore.subscribe((s, prev) => {
+    if (s.widths !== prev.widths) save();
   });
   useViewStore.subscribe((s, prev) => {
     if (s.thumbnailsOpen !== prev.thumbnailsOpen || s.zoomMode !== prev.zoomMode || (s.zoomMode === "custom" && s.scale !== prev.scale)) save();

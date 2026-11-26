@@ -352,8 +352,8 @@ export function highlightFromQuads(
   return { type: "highlight", id, quads: kept, color: props.color, opacity: props.opacity };
 }
 
-/** Width of a placed signature as a fraction of the page width on screen (SPEC 6.8). */
-export const SIGNATURE_WIDTH_RATIO = 0.25;
+/** Width of a new signature as a fraction of the page width on screen (SPEC 6.8). */
+export const SIGNATURE_WIDTH_RATIO = 0.2;
 
 export type NewSignatureInput = {
   id: string;
@@ -367,15 +367,20 @@ export type NewSignatureInput = {
   axes: { right: Point; down: Point };
   /** The page's display rotation: the signature is upright on screen (SPEC 5). */
   rotation: Rotation;
+  /** Remembered upright width (pt) of this signature (D50); the page ratio when absent. */
+  width?: number;
 };
 
-/** A signature 25% of the page width on screen, centered on the click, inside the page. */
+/**
+ * A signature centered on the click, upright on screen, inside the page: as wide as its
+ * remembered width, or 20% of the page width on screen (SPEC 6.8, D50).
+ */
 export function newSignature(input: NewSignatureInput): PageObject {
   const { box, axes } = input;
   const pageW = Math.abs(axes.right.x) * (box.x1 - box.x0) + Math.abs(axes.right.y) * (box.y1 - box.y0);
   const pageH = Math.abs(axes.down.x) * (box.x1 - box.x0) + Math.abs(axes.down.y) * (box.y1 - box.y0);
   // Size on screen (pt), shrunk to fit the page with the ratio kept.
-  let w = pageW * SIGNATURE_WIDTH_RATIO;
+  let w = input.width ?? pageW * SIGNATURE_WIDTH_RATIO;
   let h = w / input.aspect;
   const fit = Math.min(1, pageW / w, pageH / h);
   w *= fit;
@@ -385,4 +390,10 @@ export function newSignature(input: NewSignatureInput): PageObject {
   const ey = Math.abs(axes.right.y) * w + Math.abs(axes.down.y) * h;
   const rect = fitInBox({ x0: input.at.x - ex / 2, y0: input.at.y - ey / 2, x1: input.at.x + ex / 2, y1: input.at.y + ey / 2 }, box);
   return { type: "signature", id: input.id, signatureId: input.signatureId, rect, rotation: input.rotation };
+}
+
+/** The upright width (pt) of a placed signature: along its own +x direction (SPEC 5). */
+export function signatureWidth(o: Extract<PageObject, { type: "signature" }>): number {
+  const { x0, y0, x1, y1 } = o.rect;
+  return o.rotation === 90 || o.rotation === 270 ? y1 - y0 : x1 - x0;
 }

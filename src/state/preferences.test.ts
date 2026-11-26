@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PROPS, PALETTE } from "../editor/tools";
-import { DEFAULT_PREFERENCES, parsePreferences, serializePreferences, type Preferences } from "./preferences";
+import { DEFAULT_PREFERENCES, MAX_SIGNATURE_WIDTHS, parsePreferences, serializePreferences, signatureWidthsFrom, type Preferences } from "./preferences";
 
 describe("preferences (D38)", () => {
   const custom: Preferences = {
@@ -13,6 +13,7 @@ describe("preferences (D38)", () => {
     thumbnailsOpen: false,
     zoomMode: "custom",
     scale: 1.5,
+    signatureWidths: { "sg-a": 90, "sg-b": 120.5 },
   };
 
   it("round-trips", () => {
@@ -43,5 +44,16 @@ describe("preferences (D38)", () => {
     expect(p.thumbnailsOpen).toBe(false);
     expect(p.zoomMode).toBe("fitWidth");
     expect(p.scale).toBe(1);
+    expect(p.signatureWidths).toEqual(custom.signatureWidths);
+  });
+
+  it("keeps only valid signature widths, newest last (D50)", () => {
+    expect(signatureWidthsFrom([90])).toEqual({});
+    expect(signatureWidthsFrom({ a: 90, b: 2, c: "90", d: 1e9, e: Number.NaN, f: 4 })).toEqual({ a: 90, f: 4 });
+    const many = Object.fromEntries(Array.from({ length: MAX_SIGNATURE_WIDTHS + 5 }, (_, i) => [`sg-${i}`, 100 + i]));
+    const kept = signatureWidthsFrom(many);
+    expect(Object.keys(kept)).toHaveLength(MAX_SIGNATURE_WIDTHS);
+    expect(kept["sg-0"]).toBeUndefined();
+    expect(kept[`sg-${MAX_SIGNATURE_WIDTHS + 4}`]).toBe(100 + MAX_SIGNATURE_WIDTHS + 4);
   });
 });

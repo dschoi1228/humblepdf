@@ -36,7 +36,7 @@ profile:
 
 - `%APPDATA%\io.github.dschoi1228.humblepdf\signatures\` — your signature images
 - `%APPDATA%\io.github.dschoi1228.humblepdf\` and `%LOCALAPPDATA%\io.github.dschoi1228.humblepdf\`
-  — window size, recent tool settings and the UI language
+  — window size, recent tool settings, the size of each signature and the UI language
 
 Delete those folders to remove everything the app has stored.
 
@@ -58,7 +58,7 @@ Delete those folders to remove everything the app has stored.
   subsets
 - A signature library (PNG/JPG) and signature placement; signatures are baked into the page.
   Remove the white background of a photographed signature (with a strength slider), or draw
-  a signature in black or blue
+  a signature in black or blue. Each signature is placed at the size you last resized it to
 - Copy, paste and duplicate objects; undo and redo for everything
 - Reopen a file saved by HumblePDF: its highlights, shapes and text come back editable
 - Export a flattened copy with every object baked into the pages
