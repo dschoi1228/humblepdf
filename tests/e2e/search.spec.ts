@@ -217,6 +217,76 @@ test("a far page of 300 is found and shown without blocking the page", async ({ 
   expect(Math.max(0, ...longTasks), "longest main-thread task while searching (ms)").toBeLessThan(200);
 });
 
+/**
+ * The box's edges fall in the gaps between glyphs: on the rendered canvas no run of inked
+ * columns (part of a glyph) crosses them, and the box holds ink.
+ */
+async function expectBoxOnGlyphs(page: Page, index: number, el: Locator) {
+  const r = (await el.boundingBox())!;
+  const result = await page.evaluate(
+    ([i, x, y, w, h]) => {
+      const canvas = document.querySelector<HTMLCanvasElement>(`[data-testid=page][data-page-index="${i}"] canvas`)!;
+      const c = canvas.getBoundingClientRect();
+      const k = canvas.width / c.width;
+      // Columns from one box width before to one after, rows of the box.
+      const cx0 = Math.max(0, Math.floor((x - w - c.left) * k));
+      const cx1 = Math.min(canvas.width, Math.ceil((x + 2 * w - c.left) * k));
+      const cy0 = Math.floor((y - c.top) * k);
+      const cy1 = Math.ceil((y + h - c.top) * k);
+      const data = canvas.getContext("2d")!.getImageData(cx0, cy0, cx1 - cx0, cy1 - cy0);
+      const ink: boolean[] = [];
+      for (let col = 0; col < data.width; col++) {
+        let dark = false;
+        for (let row = 0; row < data.height && !dark; row++) {
+          const p = (row * data.width + col) * 4;
+          dark = data.data[p] + data.data[p + 1] + data.data[p + 2] < 3 * 140;
+        }
+        ink.push(dark);
+      }
+      // Runs of inked columns, in client px.
+      const runs: [number, number][] = [];
+      ink.forEach((d, col) => {
+        const at = c.left + (cx0 + col) / k;
+        if (d && (col === 0 || !ink[col - 1])) runs.push([at, at + 1 / k]);
+        else if (d) runs[runs.length - 1][1] = at + 1 / k;
+      });
+      return runs;
+    },
+    [index, r.x, r.y, r.width, r.height] as const,
+  );
+  const tol = 1;
+  const inside = result.filter(([a, b]) => b > r.x + tol && a < r.x + r.width - tol);
+  expect(inside.length, "ink in the box").toBeGreaterThan(0);
+  for (const [a, b] of inside) {
+    expect(a, "a glyph crosses the box's left edge").toBeGreaterThanOrEqual(r.x - tol);
+    expect(b, "a glyph crosses the box's right edge").toBeLessThanOrEqual(r.x + r.width + tol);
+  }
+}
+
+test("match boxes sit on the glyphs inside a line, also after Hangul in another font", async ({ page }) => {
+  // korean_embedded.pdf: "가나다라마바사 0123456789" in an embedded Korean font whose digits
+  // are much wider than the browser's fallback font (D49). At 300%.
+  await page.goto(`/?open=${fixtureUrl("korean_embedded.pdf")}`);
+  await waitForRenders(page);
+  for (let i = 0; i < 8 && Number(await view(page).getAttribute("data-scale")) < 3; i++) await page.getByTestId("zoom-in").click();
+  await waitForIdle(page);
+  await view(page).click({ position: { x: 5, y: 5 } });
+  for (const q of ["0", "5", "345", "바사"]) {
+    await find(page, q);
+    await expect(count(page), q).toHaveText("1/1");
+    await expect(current(page)).toHaveCount(1);
+    await expectInView(page, current(page));
+    await expectBoxOnGlyphs(page, 0, current(page));
+  }
+  // A word inside a Latin line (text_select.pdf, Helvetica).
+  await page.keyboard.press("Escape");
+  await open(page);
+  await view(page).click({ position: { x: 5, y: 5 } });
+  await find(page, "blePD");
+  await expect(count(page)).toHaveText("1/2");
+  await expectBoxOnGlyphs(page, 0, current(page));
+});
+
 test("fit-page fits every page whole when upright and sideways pages are mixed", async ({ page }) => {
   await open(page);
   const v = (await view(page).boundingBox())!;

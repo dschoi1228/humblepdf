@@ -9,8 +9,9 @@
 //
 // The highlight tool (M13, D48) drags the same selection and turns it into one quad per
 // line (`selectionQuads`).
-import { TextLayer, normalizeUnicode } from "pdfjs-dist";
+import { OPS, TextLayer, normalizeUnicode } from "pdfjs-dist";
 import type { PDFPageProxy } from "pdfjs-dist";
+import { itemFractions, paintedChars, type FontInfo, type TextOps } from "./glyphLayout";
 import { mergeLines, readingBox, readingQuad, toReading, type Box, type ClientQuad } from "./readingFrame";
 
 /** Class of every text layer div; selection checks look for it. */
@@ -34,6 +35,7 @@ export async function renderTextLayer(
 ): Promise<void> {
   div.replaceChildren();
   itemSpans.delete(div);
+  charFractions.delete(div);
   setTextLayerScale(div, scale);
   const layer = new TextLayer({
     textContentSource: pdfPage.streamTextContent({ includeMarkedContent: true, disableNormalization: true }),
@@ -48,10 +50,48 @@ export async function renderTextLayer(
     signal.removeEventListener("abort", onAbort);
   }
   // One span per text item with a string, in the order of `getTextContent` (search, M14).
-  itemSpans.set(div, layer.textDivs);
+  const spans = layer.textDivs;
+  itemSpans.set(div, spans);
+  spans.forEach((span, i) => spanItem.set(span, i));
+  // Where the characters really are inside each span (D49); without it the browser's layout.
+  try {
+    const ops = await pdfPage.getOperatorList();
+    if (signal.aborted) return;
+    const fontOf = (name: string): FontInfo =>
+      pdfPage.commonObjs.has(name) ? (pdfPage.commonObjs.get(name) as FontInfo) : null;
+    const layouts = itemFractions(layer.textContentItemsStr, paintedChars(ops, OPS as unknown as TextOps, fontOf));
+    charFractions.set(
+      div,
+      layouts.map((l) => l?.fractions ?? null),
+    );
+    // The zoom may have changed while the operator list was read.
+    fitSpanWidths(spans, layouts, Number(div.style.getPropertyValue("--total-scale-factor")) || scale);
+  } catch {
+    // Glyph positions unavailable: boxes follow the browser's layout of the span.
+  }
   // A selection that runs into the next page starts it on a new line.
   div.append(document.createElement("br"));
 }
+
+/**
+ * Stretches each span to its painted length. pdf.js sets `--scale-x` from a canvas
+ * measurement, but Chromium may pick another fallback font for the span than for that
+ * canvas (seen with Hangul: 10% wider), so the span would run past its glyphs. The layout
+ * width read here is the span's own, so the ratio holds at every zoom.
+ */
+function fitSpanWidths(spans: readonly HTMLElement[], layouts: readonly ({ length: number } | null)[], scale: number) {
+  const widths = spans.map((s, i) => (layouts[i] && !s.style.getPropertyValue("--rotate") ? s.offsetWidth : 0));
+  spans.forEach((s, i) => {
+    const l = layouts[i];
+    if (!l || !widths[i]) return;
+    s.style.setProperty("--scale-x", String((l.length * scale) / widths[i]));
+  });
+}
+
+/** Text item index of each span. */
+const spanItem = new WeakMap<Element, number>();
+/** Per layer and text item: character boundaries as fractions of the item's length (D49). */
+const charFractions = new WeakMap<HTMLElement, (Float64Array | null)[]>();
 
 /** True when the document selection is a non-empty range inside a page's text. */
 export function hasTextSelection(): boolean {
@@ -163,7 +203,7 @@ export function selectionQuads(): { pageIndex: number; quads: ClientQuad[] }[] {
     const boxes: Box[] = [];
     // Text node by text node: a range across pages also holds whole elements (canvas, object
     // layer) whose boxes are not text.
-    for (const span of layer.querySelectorAll("span:not(.markedContent)")) {
+    for (const span of layer.querySelectorAll<HTMLElement>("span:not(.markedContent)")) {
       const text = textNodeOf(span);
       if (!text || !text.data.length || !range.intersectsNode(text)) continue;
       const part = document.createRange();
@@ -185,8 +225,23 @@ export function selectionQuads(): { pageIndex: number; quads: ClientQuad[] }[] {
  * are as tall as the browser's fallback font, which for CJK text is much taller than the
  * PDF glyphs. Along the line: the part itself.
  */
-function runBoxes(rotation: number, span: Element, part: Range): Box[] {
+function runBoxes(rotation: number, span: HTMLElement, part: Range): Box[] {
   const line = readingBox(rotation, span.getBoundingClientRect());
+  // Along the line from the painted glyphs when known (D49); the span then runs from the
+  // first glyph's start to the last one's end. Not for text turned inside the page.
+  const layer = span.closest<HTMLElement>(`.${TEXT_LAYER_CLASS}`);
+  const index = spanItem.get(span);
+  const fr = layer && index !== undefined ? charFractions.get(layer)?.[index] : null;
+  const text = textNodeOf(span);
+  const turned = !!span.style.getPropertyValue("--rotate");
+  if (fr && text && !turned && fr.length === text.data.length + 1) {
+    const from = part.startContainer === text ? part.startOffset : 0;
+    const to = part.endContainer === text ? part.endOffset : text.data.length;
+    const w = line.x1 - line.x0;
+    const x0 = line.x0 + fr[from] * w;
+    const x1 = line.x0 + fr[to] * w;
+    return x1 - x0 >= MIN_RUN_PX ? [{ x0, x1, y0: line.y0, y1: line.y1 }] : [];
+  }
   const out: Box[] = [];
   for (const r of part.getClientRects()) {
     if (r.width < MIN_RUN_PX || r.height < MIN_RUN_PX) continue;
