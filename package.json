@@ -2,7 +2,7 @@
   "name": "humblepdf",
   "description": "A humble little PDF tool: merge, sign, mark up. Fully offline.",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
