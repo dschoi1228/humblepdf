@@ -97,8 +97,12 @@ test("page number input and thumbnails navigate", async ({ page }) => {
   await input.press("Enter");
   await expect.poll(() => page.evaluate(() => window.__viewer!.view().currentPage)).toBe(299);
 
-  // Clicking a thumbnail goes to that page.
-  const thumb = page.getByTestId("thumbnail").first();
+  // Clicking a thumbnail goes to that page. The panel follows the current page first; pin
+  // the thumbnail by its page id so a list still scrolling cannot swap it under the click.
+  await expect(page.locator("[data-testid=thumbnail][aria-current=page]")).toHaveText(/^300\D/);
+  await expect(page.locator("[data-testid=thumbnail][aria-current=page]")).toBeInViewport();
+  const pageId = await page.getByTestId("thumbnail").first().getAttribute("data-page-id");
+  const thumb = page.locator(`[data-testid=thumbnail][data-page-id="${pageId}"]`);
   const label = await thumb.innerText();
   await thumb.click();
   const n = Number.parseInt(label, 10);
